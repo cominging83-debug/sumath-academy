@@ -406,64 +406,129 @@ window.loadDashboardView = function () {
         </div>
       </div>
 
-      <!-- 📊 Phase 4 KPI 카드 -->
-      <div class="row g-2 mt-3 mb-2">
-        <div class="col-lg-3">
-          <div class="card border-0 shadow-sm h-100" style="border-radius: 12px; background: linear-gradient(135deg, #ffffff, #e0f2fe); border-left: 4px solid #0284c7 !important;">
-            <div class="card-body p-3">
-              <div class="d-flex align-items-center justify-content-between">
-                <div>
-                  <p class="text-muted small fw-bold mb-1">📊 오늘 수업</p>
-                  <h3 class="fw-bold m-0 text-info">${todayClasses}</h3>
-                  <small class="text-muted">건수</small>
+      <!-- 📊 Phase 4 KPI 히어로 섹션 -->
+      <div style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); border-radius: 16px; padding: 2rem; margin-top: 1rem; margin-bottom: 2rem; box-shadow: 0 10px 40px rgba(0,0,0,0.15);">
+        <div class="mb-3">
+          <h5 class="text-white fw-bold m-0"><i class="bi bi-star-fill text-warning me-2"></i>오늘의 핵심 지표</h5>
+        </div>
+
+        <div class="row g-3">
+          <!-- KPI 1 -->
+          <div class="col-md-6 col-lg-3">
+            <div class="card border-0 h-100" style="border-radius: 12px; background: linear-gradient(135deg, #ffffff, #e0f2fe); box-shadow: 0 4px 20px rgba(2, 132, 199, 0.15);">
+              <div class="card-body p-4">
+                <div class="d-flex justify-content-between align-items-start">
+                  <div>
+                    <p class="text-muted small fw-bold mb-2">📊 오늘 수업</p>
+                    <h2 class="fw-bold m-0 text-info" style="font-size: 2.5rem;">${todayClasses}</h2>
+                    <small class="text-muted">건수</small>
+                  </div>
+                  <i class="bi bi-calendar-event text-info" style="font-size: 2.5rem; opacity: 0.2;"></i>
                 </div>
-                <i class="bi bi-calendar-event text-info" style="font-size: 2rem; opacity: 0.3;"></i>
+              </div>
+            </div>
+          </div>
+
+          <!-- KPI 2 -->
+          <div class="col-md-6 col-lg-3">
+            <div class="card border-0 h-100" style="border-radius: 12px; background: linear-gradient(135deg, #ffffff, #dcfce7); box-shadow: 0 4px 20px rgba(22, 163, 74, 0.15);">
+              <div class="card-body p-4">
+                <div class="d-flex justify-content-between align-items-start">
+                  <div>
+                    <p class="text-muted small fw-bold mb-2">📈 이번달 출석률</p>
+                    <h2 class="fw-bold m-0" style="color: #16a34a; font-size: 2.5rem;">${attendanceRate}<span style="font-size: 1.2rem;">%</span></h2>
+                    <small class="text-muted">${thisMonthPresent}/${thisMonthTotal}명</small>
+                  </div>
+                  <i class="bi bi-graph-up text-success" style="font-size: 2.5rem; opacity: 0.2;"></i>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- KPI 3 -->
+          <div class="col-md-6 col-lg-3">
+            <div class="card border-0 h-100" style="border-radius: 12px; background: linear-gradient(135deg, #ffffff, #fef3c7); box-shadow: 0 4px 20px rgba(217, 119, 6, 0.15);">
+              <div class="card-body p-4">
+                <div class="d-flex justify-content-between align-items-start">
+                  <div>
+                    <p class="text-muted small fw-bold mb-2">✨ 신규 등록</p>
+                    <h2 class="fw-bold m-0" style="color: #d97706; font-size: 2.5rem;">${newStudents}</h2>
+                    <small class="text-muted">명 (이번달)</small>
+                  </div>
+                  <i class="bi bi-person-plus text-warning" style="font-size: 2.5rem; opacity: 0.2;"></i>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- KPI 4 -->
+          <div class="col-md-6 col-lg-3">
+            <div class="card border-0 h-100" style="border-radius: 12px; background: linear-gradient(135deg, #ffffff, #fee2e2); box-shadow: 0 4px 20px rgba(220, 38, 38, 0.15);">
+              <div class="card-body p-4">
+                <div class="d-flex justify-content-between align-items-start">
+                  <div>
+                    <p class="text-muted small fw-bold mb-2">⏳ 미완료 보강</p>
+                    <h2 class="fw-bold m-0 text-danger" style="font-size: 2.5rem;">${incompleteMakeups}</h2>
+                    <small class="text-muted">건 (진행중)</small>
+                  </div>
+                  <i class="bi bi-hourglass-split text-danger" style="font-size: 2.5rem; opacity: 0.2;"></i>
+                </div>
               </div>
             </div>
           </div>
         </div>
-        <div class="col-lg-3">
-          <div class="card border-0 shadow-sm h-100" style="border-radius: 12px; background: linear-gradient(135deg, #ffffff, #dcfce7); border-left: 4px solid #16a34a !important;">
+      </div>
+    </div>
+
+    <!-- 🎯 오늘의 핵심 업무 섹션 -->
+    <div style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); border-radius: 16px; padding: 2rem; margin-bottom: 2rem; box-shadow: 0 10px 40px rgba(0,0,0,0.15);">
+      <h5 class="text-white fw-bold m-0 mb-3"><i class="bi bi-lightning-fill text-warning me-2"></i>오늘의 핵심 업무</h5>
+
+      <div class="row g-2">
+        ${pending.length > 0 ? `
+        <div class="col-md-4">
+          <div class="card border-0 h-100" style="border-radius: 12px; background: linear-gradient(135deg, #fff5f5, #fee2e2); border-left: 5px solid #dc2626;">
             <div class="card-body p-3">
-              <div class="d-flex align-items-center justify-content-between">
-                <div>
-                  <p class="text-muted small fw-bold mb-1">📈 이번달 출석률</p>
-                  <h3 class="fw-bold m-0" style="color: #16a34a;">${attendanceRate}%</h3>
-                  <small class="text-muted">${thisMonthPresent}/${thisMonthTotal}명</small>
-                </div>
-                <i class="bi bi-graph-up text-success" style="font-size: 2rem; opacity: 0.3;"></i>
+              <div class="d-flex align-items-center gap-2 mb-2">
+                <span class="badge bg-danger rounded-pill fw-bold" style="font-size: 1rem;">🔴</span>
+                <strong>출석 체크 대기</strong>
               </div>
+              <h3 class="fw-bold m-0 text-danger">${pending.length}</h3>
+              <small class="text-muted">건 | 우선순위 최고</small>
             </div>
           </div>
         </div>
-        <div class="col-lg-3">
-          <div class="card border-0 shadow-sm h-100" style="border-radius: 12px; background: linear-gradient(135deg, #ffffff, #fef3c7); border-left: 4px solid #d97706 !important;">
+        ` : ''}
+
+        ${drafting.length > 0 ? `
+        <div class="col-md-4">
+          <div class="card border-0 h-100" style="border-radius: 12px; background: linear-gradient(135deg, #fffbeb, #fef3c7); border-left: 5px solid #f59e0b;">
             <div class="card-body p-3">
-              <div class="d-flex align-items-center justify-content-between">
-                <div>
-                  <p class="text-muted small fw-bold mb-1">✨ 신규 등록</p>
-                  <h3 class="fw-bold m-0" style="color: #d97706;">${newStudents}</h3>
-                  <small class="text-muted">명</small>
-                </div>
-                <i class="bi bi-person-plus text-warning" style="font-size: 2rem; opacity: 0.3;"></i>
+              <div class="d-flex align-items-center gap-2 mb-2">
+                <span class="badge bg-warning text-dark rounded-pill fw-bold" style="font-size: 1rem;">🟡</span>
+                <strong>일지 작성중</strong>
               </div>
+              <h3 class="fw-bold m-0" style="color: #d97706;">${drafting.length}</h3>
+              <small class="text-muted">건 | 작성 중</small>
             </div>
           </div>
         </div>
-        <div class="col-lg-3">
-          <div class="card border-0 shadow-sm h-100" style="border-radius: 12px; background: linear-gradient(135deg, #ffffff, #fee2e2); border-left: 4px solid #dc2626 !important;">
+        ` : ''}
+
+        ${incompleteMakeups > 0 ? `
+        <div class="col-md-4">
+          <div class="card border-0 h-100" style="border-radius: 12px; background: linear-gradient(135deg, #ecfdf5, #dcfce7); border-left: 5px solid #10b981;">
             <div class="card-body p-3">
-              <div class="d-flex align-items-center justify-content-between">
-                <div>
-                  <p class="text-muted small fw-bold mb-1">⏳ 미완료 보강</p>
-                  <h3 class="fw-bold m-0 text-danger">${incompleteMakeups}</h3>
-                  <small class="text-muted">건수</small>
-                </div>
-                <i class="bi bi-hourglass-split text-danger" style="font-size: 2rem; opacity: 0.3;"></i>
+              <div class="d-flex align-items-center gap-2 mb-2">
+                <span class="badge bg-success rounded-pill fw-bold" style="font-size: 1rem;">🟢</span>
+                <strong>미완료 보강</strong>
               </div>
+              <h3 class="fw-bold m-0 text-success">${incompleteMakeups}</h3>
+              <small class="text-muted">건 | 완료 예정</small>
             </div>
           </div>
         </div>
+        ` : ''}
       </div>
     </div>
 
