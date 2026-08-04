@@ -536,8 +536,15 @@ window.loadDashboardView = function () {
     <!-- 🚨 주의 필요한 학생 (위험군 알람) -->
     ${atRiskStudents.length > 0 ? `
     <div style="background: linear-gradient(135deg, #7f1d1d 0%, #5f0f0f 100%); border-radius: 16px; padding: 2rem; margin-bottom: 2rem; box-shadow: 0 10px 40px rgba(220, 38, 38, 0.2);">
-      <h5 class="text-white fw-bold m-0 mb-3"><i class="bi bi-exclamation-triangle-fill text-danger me-2"></i>🚨 주의 필요한 학생 (${atRiskStudents.length}명)</h5>
-      <small class="text-light">결석 3회 이상 또는 숙제 미제출 3회 이상</small>
+      <div class="d-flex justify-content-between align-items-start mb-2">
+        <h5 class="text-white fw-bold m-0"><i class="bi bi-exclamation-triangle-fill text-danger me-2"></i>🚨 주의 필요한 학생 (${atRiskStudents.length}명)</h5>
+        <button class="btn btn-sm btn-light btn-outline-light" data-bs-toggle="modal" data-bs-target="#atRiskCriteriaModal" style="border-radius: 50%; width: 32px; height: 32px; padding: 0; display: flex; align-items: center; justify-content: center;">
+          <i class="bi bi-info-circle-fill"></i>
+        </button>
+      </div>
+      <small class="text-light d-block mb-3">
+        <strong>기준:</strong> 지난 30일 내 결석 3회 이상 또는 숙제 미제출 3회 이상
+      </small>
 
       <div class="mt-3">
         ${atRiskStudents.map((s, idx) => `
@@ -679,6 +686,61 @@ window.loadDashboardView = function () {
       </div>
     </div>
 
+    <!-- 📚 진도율 TOP 5 섹션 -->
+    <div class="row g-4 mt-4 mb-4">
+      <div class="col-lg-12">
+        <div class="card border-0 shadow-sm h-100" style="border-radius: 16px;">
+          <div class="card-header bg-success text-white fw-bold border-0 p-4" style="border-radius: 16px 16px 0 0;">
+            <i class="bi bi-fire me-2"></i>📚 이번달 진도율 TOP 5 (잘하는 학생들)
+          </div>
+          <div class="card-body p-4">
+            <div class="row g-3">
+              ${(() => {
+                // 교재진도 계산
+                const bookProgressMap = new Map();
+                attendanceData.forEach(r => {
+                  if (!r[1] || !r[3] || r[3] < thisMonthStart) return;
+                  const studentId = r[1];
+                  const bookName = r[9];
+                  const range = r[10];
+                  if (!bookName || !range) return;
+
+                  const nums = range.match(/\d+/g);
+                  if (!nums) return;
+                  const maxPage = Math.max(...nums.map(Number));
+
+                  if (!bookProgressMap.has(studentId)) {
+                    bookProgressMap.set(studentId, { name: r[2], maxPage: 0 });
+                  }
+                  const entry = bookProgressMap.get(studentId);
+                  if (maxPage > entry.maxPage) entry.maxPage = maxPage;
+                });
+
+                const topStudents = Array.from(bookProgressMap.values())
+                  .sort((a, b) => b.maxPage - a.maxPage)
+                  .slice(0, 5);
+
+                return topStudents.map((s, idx) => `
+                  <div class="col-md-6 col-lg-4 col-xl-2.4">
+                    <div class="card border-0 h-100" style="border-radius: 12px; background: linear-gradient(135deg, #f0fdf4, #dcfce7); border-top: 4px solid #16a34a;">
+                      <div class="card-body p-3 text-center">
+                        <div class="mb-2">
+                          ${idx === 0 ? '🥇' : (idx === 1 ? '🥈' : (idx === 2 ? '🥉' : ''))}
+                          <div class="fw-bold text-dark mt-1">${s.name}</div>
+                        </div>
+                        <div class="display-6 fw-bold text-success">${s.maxPage}</div>
+                        <small class="text-muted">페이지</small>
+                      </div>
+                    </div>
+                  </div>
+                `).join('');
+              })()}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div class="row g-4 mt-2">
       <div class="col-lg-6">
         <div class="collapse show" id="collapsePending">
@@ -731,6 +793,64 @@ window.loadDashboardView = function () {
   document.getElementById('view-container').innerHTML = html;
   if (window.refreshDashboardTodos) window.refreshDashboardTodos();
   if (typeof loadTeacherDashboardWidgets === 'function') loadTeacherDashboardWidgets();
+
+  // 기준 설명 모달 추가
+  const criteriaModalHTML = `
+    <div class="modal fade" id="atRiskCriteriaModal" tabindex="-1">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0">
+          <div class="modal-header bg-danger text-white border-0">
+            <h5 class="modal-title fw-bold"><i class="bi bi-exclamation-triangle-fill me-2"></i>위험군 알람 기준</h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body p-4">
+            <div class="alert alert-danger border-0 mb-3" style="background: rgba(220, 38, 38, 0.1);">
+              <h6 class="fw-bold text-danger mb-2">🚨 주의 필요한 학생 판정 기준</h6>
+              <small class="text-muted">지난 30일 기준으로 다음 중 하나라도 해당되면 위험군 알람 표시</small>
+            </div>
+
+            <div class="row g-3">
+              <div class="col-12">
+                <div class="card border-0 bg-light p-3" style="border-left: 4px solid #dc2626;">
+                  <h6 class="fw-bold text-danger mb-2">1️⃣ 결석 3회 이상</h6>
+                  <small class="text-muted">
+                    지난 30일 동안 출석 상태가 "결석"인 기록이 3번 이상
+                  </small>
+                </div>
+              </div>
+              <div class="col-12">
+                <div class="card border-0 bg-light p-3" style="border-left: 4px solid #dc2626;">
+                  <h6 class="fw-bold text-danger mb-2">2️⃣ 숙제 미제출 3회 이상</h6>
+                  <small class="text-muted">
+                    지난 30일 동안 출석 기록에 숙제 범위가 없거나 비어있는 경우가 3번 이상
+                  </small>
+                </div>
+              </div>
+              <div class="col-12">
+                <div class="card border-0 bg-light p-3" style="border-left: 4px solid #dc2626;">
+                  <h6 class="fw-bold text-danger mb-2">3️⃣ 복합 위험 (둘 다 해당)</h6>
+                  <small class="text-muted">
+                    결석과 숙제 미제출이 동시에 반복되는 경우 → <strong>퇴원 위험</strong>
+                  </small>
+                </div>
+              </div>
+            </div>
+
+            <div class="alert alert-info mt-3 mb-0 border-0">
+              <strong>💡 팁:</strong> 알람이 뜬 학생을 클릭하면 상세 프로필과 상담 요청 기능을 사용할 수 있습니다.
+            </div>
+          </div>
+          <div class="modal-footer border-0">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">닫기</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  if (!document.getElementById('atRiskCriteriaModal')) {
+    document.body.insertAdjacentHTML('beforeend', criteriaModalHTML);
+  }
 };
 
 // =================================================================
