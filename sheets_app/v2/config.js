@@ -23,7 +23,7 @@ const CONFIG = {
         CLASS: '수강DB',
         SCHEDULE: '수강일정DB',
         ATTENDANCE: '출결기록',
-        COUNSEL: '상담일지',    // 원천DB 연동
+        COUNSEL: '상담일지',    // 상담 기록 + 요청 (J:요청일자, K:마감일, L:상태, M:요청자, N:메모)
         BOOK: '교재DB',        // 교재 마스터
         ALIMTALK: '알림톡설정', // 알림톡 템플릿
         TATT: '강사근태',      // 강사 출퇴근 기록

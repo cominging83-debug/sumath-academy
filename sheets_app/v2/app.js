@@ -4620,7 +4620,7 @@ window.switchView = function (viewId) {
   // 모바일 헤더 타이틀 업데이트
   const viewTitles = {
     DASHBOARD: '대시보드', SCHEDULE: '주간 시간표', ABSENTEE: '보강 관리', ABSENT: '보강 관리',
-    STUDENT: '학생 관리', REGISTER: '수강 등록', COUNSEL: '상담 기록',
+    STUDENT: '학생 관리', REGISTER: '수강 등록', COUNSEL: '상담 기록', COUNSEL_REQ: '상담 요청',
     HISTORY: '기록 조회', SCORE: '성적 관리', BOOK: '교재 관리', TATT: '강사 근태'
   };
   const titleEl = document.getElementById('mobile-page-title');
@@ -4645,6 +4645,7 @@ window.switchView = function (viewId) {
       case 'STUDENT': if (window.loadStudentView) window.loadStudentView(); break;
       case 'REGISTER': if (window.loadRegisterView) window.loadRegisterView(); break;
       case 'COUNSEL': if (window.loadCounselView) window.loadCounselView(); break;
+      case 'COUNSEL_REQ': if (window.loadCounselRequestView) window.loadCounselRequestView(); break;
       case 'HISTORY': if (window.loadHistoryView) window.loadHistoryView(); break;
       case 'SCORE': if (window.loadScoreView) window.loadScoreView(); break;
       case 'BOOK': if (window.loadBookView) window.loadBookView(); break;
@@ -5060,5 +5061,300 @@ window.markStudentAsActive = async function(studentId, studentName) {
     loadStudentView();
   } catch (e) {
     alert('복귀 처리 중 오류: ' + e.message);
+  }
+};
+
+// =========================================
+// 📞 상담 요청 시스템
+// =========================================
+
+window.openCounselRequestModal = function(studentId = '', studentName = '') {
+  const teachers = (appCache.raw.teachers || []).slice(1);
+  const students = (appCache.raw.students || []).slice(1);
+
+  let teacherOptions = '<option value="">강사 선택</option>';
+  teachers.forEach(t => {
+    if (t[0] && t[1]) teacherOptions += `<option value="${t[1]}">${t[1]}</option>`;
+  });
+
+  let studentOptions = '<option value="">학생 선택</option>';
+  students.forEach(s => {
+    if (s[0] && s[1] && s[7] === '재원') {
+      studentOptions += `<option value="${s[0]}" data-name="${s[1]}">${s[1]} (${s[0]})</option>`;
+    }
+  });
+
+  const today = new Date().toISOString().split('T')[0];
+  const nextWeek = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+
+  const modalHTML = `
+    <div class="modal fade" id="counselRequestModal" tabindex="-1">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header bg-gradient">
+            <h5 class="modal-title fw-bold"><i class="bi bi-calendar-check"></i> 상담 요청</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body">
+            <div class="mb-3">
+              <label class="form-label fw-bold">학생 <span class="text-danger">*</span></label>
+              <select id="counselReqStudent" class="form-select">
+                ${studentOptions}
+              </select>
+            </div>
+            <div class="mb-3">
+              <label class="form-label fw-bold">담당 강사 <span class="text-danger">*</span></label>
+              <select id="counselReqTeacher" class="form-select">
+                ${teacherOptions}
+              </select>
+            </div>
+            <div class="mb-3">
+              <label class="form-label fw-bold">상담 유형 <span class="text-danger">*</span></label>
+              <select id="counselReqType" class="form-select">
+                <option value="">선택</option>
+                <option value="신규상담">신규상담</option>
+                <option value="정기 상담">정기 상담</option>
+                <option value="대면상담">대면상담</option>
+                <option value="학부모 전화 상담 요청">학부모 전화 상담 요청</option>
+              </select>
+            </div>
+            <div class="mb-3">
+              <label class="form-label fw-bold">상담 예정 날짜 <span class="text-danger">*</span></label>
+              <input type="date" id="counselReqDate" class="form-control" value="${today}">
+            </div>
+            <div class="mb-3">
+              <label class="form-label fw-bold">마감일 (Due Date) <span class="text-danger">*</span></label>
+              <input type="date" id="counselReqDueDate" class="form-control" value="${nextWeek}">
+            </div>
+            <div class="mb-3">
+              <label class="form-label">상담 내용 (선택)</label>
+              <textarea id="counselReqContent" class="form-control" rows="3" placeholder="상담 내용 입력..."></textarea>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
+            <button type="button" class="btn btn-primary" onclick="saveCounselRequest()">요청 저장</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  const existing = document.getElementById('counselRequestModal');
+  if (existing) existing.remove();
+
+  document.body.insertAdjacentHTML('beforeend', modalHTML);
+  new bootstrap.Modal(document.getElementById('counselRequestModal')).show();
+
+  if (studentId) {
+    document.getElementById('counselReqStudent').value = studentId;
+  }
+};
+
+window.saveCounselRequest = async function() {
+  const studentSelect = document.getElementById('counselReqStudent');
+  const teacherSelect = document.getElementById('counselReqTeacher');
+  const typeSelect = document.getElementById('counselReqType');
+  const dateInput = document.getElementById('counselReqDate');
+  const dueDateInput = document.getElementById('counselReqDueDate');
+  const contentInput = document.getElementById('counselReqContent');
+
+  const studentId = studentSelect.value;
+  const studentName = studentSelect.options[studentSelect.selectedIndex].getAttribute('data-name');
+  const teacher = teacherSelect.value;
+  const type = typeSelect.value;
+  const date = dateInput.value;
+  const dueDate = dueDateInput.value;
+  const content = contentInput.value;
+
+  if (!studentId || !teacher || !type || !date || !dueDate) {
+    alert('필수 항목을 모두 입력해주세요.');
+    return;
+  }
+
+  try {
+    const today = new Date().toISOString().split('T')[0];
+    const rowData = [
+      today,           // A: 일자
+      studentName,     // B: 학생명
+      studentId,       // C: 학생ID
+      '',              // D: (비어있음)
+      date,            // E: 상담일자
+      type,            // F: 상담유형
+      teacher,         // G: 담당자
+      '',              // H: 상담대상
+      '',              // I: 상담내용
+      today,           // J: 요청일자
+      dueDate,         // K: 마감일
+      '요청',          // L: 상태
+      appCache.user.name, // M: 요청자
+      ''               // N: 메모
+    ];
+
+    const sheetName = CONFIG.SHEETS.COUNSEL;
+    await appendSheetData(CONFIG.SPREADSHEET_ID, sheetName, [rowData]);
+
+    alert('상담 요청이 저장되었습니다!');
+    bootstrap.Modal.getInstance(document.getElementById('counselRequestModal')).hide();
+
+    if (typeof loadCounselRequestView === 'function') {
+      loadCounselRequestView();
+    }
+  } catch (e) {
+    alert('저장 중 오류: ' + e.message);
+  }
+};
+
+window.loadCounselRequestView = function() {
+  const isManager = appCache.user && appCache.user.role === '원장';
+  const myName = appCache.user ? appCache.user.name : '';
+
+  if (!appCache.raw || !appCache.raw.counsels) {
+    alert('상담 데이터를 로드할 수 없습니다.');
+    return;
+  }
+
+  const counsels = appCache.raw.counsels.slice(1);
+  const requests = counsels.filter(r => r[9]); // 요청일자가 있는 것만 (상담 요청)
+
+  let html = `
+    <div class="container-fluid py-4">
+      <div class="d-flex justify-content-between align-items-center mb-4">
+        <h3 class="fw-bold m-0"><i class="bi bi-calendar-check text-info me-2"></i>상담 요청 현황</h3>
+        ${isManager ? `<button class="btn btn-primary btn-sm" onclick="openCounselRequestModal()"><i class="bi bi-plus-circle me-1"></i>새 요청</button>` : ''}
+      </div>
+
+      <div class="row g-3 mb-4">
+  `;
+
+  // 통계 카드
+  const pending = requests.filter(r => r[10] && r[10] < new Date().toISOString().split('T')[0] && r[11] !== '완료');
+  const upcoming = requests.filter(r => r[10] && r[11] !== '완료');
+  const completed = requests.filter(r => r[11] === '완료');
+
+  html += `
+    <div class="col-md-3">
+      <div class="card border-0 shadow-sm bg-danger bg-opacity-10">
+        <div class="card-body text-center">
+          <h4 class="fw-bold text-danger m-0">${pending.length}</h4>
+          <small class="text-muted">마감 임박</small>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card border-0 shadow-sm bg-warning bg-opacity-10">
+        <div class="card-body text-center">
+          <h4 class="fw-bold text-warning m-0">${upcoming.filter(r => r[11] !== '완료').length}</h4>
+          <small class="text-muted">진행 중</small>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card border-0 shadow-sm bg-success bg-opacity-10">
+        <div class="card-body text-center">
+          <h4 class="fw-bold text-success m-0">${completed.length}</h4>
+          <small class="text-muted">완료됨</small>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card border-0 shadow-sm">
+    <div class="card-body">
+      <table class="table table-hover align-middle table-sm mb-0">
+        <thead class="bg-light sticky-top">
+          <tr>
+            <th>요청일자</th>
+            <th>학생명</th>
+            <th>상담유형</th>
+            <th>담당강사</th>
+            <th>상담예정</th>
+            <th>마감일</th>
+            <th>상태</th>
+            <th>요청자</th>
+            <th>조치</th>
+          </tr>
+        </thead>
+        <tbody>
+  `;
+
+  if (requests.length === 0) {
+    html += '<tr><td colspan="9" class="text-center py-4 text-muted">상담 요청이 없습니다.</td></tr>';
+  } else {
+    requests.reverse().forEach(r => {
+      const dueDate = r[10];
+      const today = new Date().toISOString().split('T')[0];
+      let statusBadge = '';
+      let statusClass = '';
+
+      if (r[11] === '완료') {
+        statusBadge = '<span class="badge bg-success">완료</span>';
+        statusClass = 'text-success';
+      } else if (dueDate < today) {
+        statusBadge = '<span class="badge bg-danger">마감</span>';
+        statusClass = 'text-danger fw-bold';
+      } else if (dueDate <= new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]) {
+        statusBadge = '<span class="badge bg-warning">임박</span>';
+        statusClass = 'text-warning fw-bold';
+      } else {
+        statusBadge = '<span class="badge bg-info">진행중</span>';
+        statusClass = '';
+      }
+
+      const typeBadge = r[5] === '신규상담' ? 'bg-primary' : r[5] === '정기 상담' ? 'bg-success' : 'bg-info text-dark';
+
+      html += `
+        <tr class="${statusClass}">
+          <td><small>${r[9] || ''}</small></td>
+          <td>${r[1] || ''}</td>
+          <td><span class="badge ${typeBadge}">${r[5] || ''}</span></td>
+          <td>${r[6] || ''}</td>
+          <td>${r[4] || ''}</td>
+          <td><strong>${r[10] || ''}</strong></td>
+          <td>${statusBadge}</td>
+          <td>${r[12] || ''}</td>
+          <td>
+            ${r[11] !== '완료' ? `<button class="btn btn-sm btn-outline-primary" onclick="markCounselComplete('${r[0]}', '${r[1]}')">완료</button>` : '✓'}
+          </td>
+        </tr>
+      `;
+    });
+  }
+
+  html += `
+        </tbody>
+      </table>
+    </div>
+  </div>
+    </div>
+  `;
+
+  document.getElementById('mainContent').innerHTML = html;
+};
+
+window.markCounselComplete = async function(date, studentName) {
+  if (!confirm(`${studentName} 학생의 상담을 완료 처리하시겠습니까?`)) return;
+
+  try {
+    const counsels = (appCache.raw.counsels || []).slice(1);
+    const counselIdx = counsels.findIndex(c => c[9] === date && c[1] === studentName);
+
+    if (counselIdx === -1) {
+      alert('상담 기록을 찾을 수 없습니다.');
+      return;
+    }
+
+    const sheetName = CONFIG.SHEETS.COUNSEL;
+    const rowNum = counselIdx + 2;
+
+    // L컬럼(상태) = 완료
+    await callSheetsAPI('PUT', `/values/${encodeURIComponent(sheetName + '!L' + rowNum)}?valueInputOption=USER_ENTERED`, { values: [['완료']] });
+
+    appCache.raw.counsels[counselIdx + 1][10] = '완료';
+
+    alert('상담이 완료 처리되었습니다!');
+    loadCounselRequestView();
+  } catch (e) {
+    alert('처리 중 오류: ' + e.message);
   }
 };
