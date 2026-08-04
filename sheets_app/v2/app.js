@@ -254,7 +254,17 @@ window.loadDashboardView = function () {
     if (!studentId || !attendDate || attendDate < thirtyDaysAgo) return;
 
     if (!studentRiskMap.has(studentId)) {
-      studentRiskMap.set(studentId, { name: studentName, absences: 0, noHomework: 0, recentRecords: [] });
+      // 원천DB에서 학생 상태 조회
+      const foundStudent = window.findStudentInfo(studentId, studentName);
+      const studentStatus = foundStudent ? foundStudent[7] : '재원'; // [7] = 상태
+
+      studentRiskMap.set(studentId, {
+        name: studentName,
+        absences: 0,
+        noHomework: 0,
+        recentRecords: [],
+        studentStatus // 퇴원/휴원 상태 저장
+      });
     }
 
     const entry = studentRiskMap.get(studentId);
@@ -263,9 +273,9 @@ window.loadDashboardView = function () {
     entry.recentRecords.push({ date: attendDate, status, homework });
   });
 
-  // 위험군 필터링
+  // 위험군 필터링 (퇴원생 제외, 재원만 포함)
   const atRiskStudents = Array.from(studentRiskMap.values())
-    .filter(s => s.absences >= 3 || s.noHomework >= 3)
+    .filter(s => s.studentStatus === '재원' && (s.absences >= 3 || s.noHomework >= 3))
     .sort((a, b) => (b.absences + b.noHomework) - (a.absences + a.noHomework))
     .slice(0, 5); // TOP 5
 
