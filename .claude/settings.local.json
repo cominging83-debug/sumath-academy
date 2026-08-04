@@ -1,0 +1,31 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\comin\\\\Desktop\\\\학원관리프로그램\" -Recurse -File)",
+      "Bash(Select-Object FullName, Extension)",
+      "Bash(Sort-Object Extension)",
+      "Bash(Head -50)",
+      "PowerShell(Get-ChildItem -Path \"C:\\\\Users\\\\comin\\\\Desktop\\\\학원관리프로그램\\\\sheets_app\" -Exclude node_modules -Recurse | Where-Object { $_.Extension -in @\\('.js', '.jsx', '.ts', '.tsx', '.json'\\) -or $_.Name -eq 'package.json' } | Select-Object -First 50)",
+      "Bash(grep -E '\\\\.\\(js|html|css|json|py\\)$')",
+      "Bash(xargs grep -c \"async\\\\|await\\\\|Promise\")",
+      "Bash(cp app.js v2/app.js)",
+      "Bash(cp api.js v2/api.js)",
+      "Bash(cp config.js v2/config.js)",
+      "Bash(cp index.html v2/index.html)",
+      "Bash(cp style.css v2/style.css)",
+      "Bash(node -c v2/config.js)",
+      "Bash(node -c v2/api.js)",
+      "Bash(grep -n \"^window.loadDashboardView\\\\|^window.load.*View\\\\|^};$\" app.js)",
+      "Bash(node -c app.js)",
+      "Bash(awk '{print $5, $9}')",
+      "Bash(xargs echo \"전체 함수 개수:\")",
+      "Bash(awk '{print $9, \"\\(\" $5 \"\\)\"}')",
+      "Bash(npm list *)",
+      "Bash(vercel --prod)",
+      "Bash(node -c v2/app.js)",
+      "Bash(python3)",
+      "Bash(node -c \"C:\\\\Users\\\\comin\\\\Desktop\\\\학원관리프로그램\\\\sheets_app\\\\v2\\\\app.js\")",
+      "Bash(awk '/^window.openStudentProfileModal/,/^window\\\\.[a-zA-Z]/ {print NR\": \"$0}' \"C:\\\\Users\\\\comin\\\\Desktop\\\\학원관리프로그램\\\\sheets_app\\\\v2\\\\app.js\")"
+    ]
+  }
+}

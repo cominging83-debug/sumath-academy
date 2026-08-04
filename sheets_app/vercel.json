@@ -1,0 +1,43 @@
+{
+  "version": 2,
+  "name": "sumath-academy",
+  "builds": [
+    { "src": "*.html", "use": "@vercel/static" },
+    { "src": "*.js",   "use": "@vercel/static" },
+    { "src": "*.css",  "use": "@vercel/static" },
+    { "src": "v2/**", "use": "@vercel/static" }
+  ],
+  "routes": [
+    {
+      "src": "/v1/(.*)",
+      "dest": "/$1",
+      "headers": {
+        "Cross-Origin-Opener-Policy": "same-origin-allow-popups",
+        "Cross-Origin-Embedder-Policy": "unsafe-none"
+      }
+    },
+    {
+      "src": "/v2/(.*)",
+      "dest": "/v2/$1",
+      "headers": {
+        "Cross-Origin-Opener-Policy": "same-origin-allow-popups",
+        "Cross-Origin-Embedder-Policy": "unsafe-none"
+      }
+    },
+    {
+      "src": "/",
+      "dest": "/version-selector.html",
+      "headers": {
+        "Cache-Control": "public, max-age=3600"
+      }
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/$1",
+      "headers": {
+        "Cross-Origin-Opener-Policy": "same-origin-allow-popups",
+        "Cross-Origin-Embedder-Policy": "unsafe-none"
+      }
+    }
+  ]
+}

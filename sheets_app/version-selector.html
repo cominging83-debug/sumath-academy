@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>수학의 힘 - 버전 선택</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        .container-center {
+            max-width: 900px;
+            width: 100%;
+            padding: 20px;
+        }
+
+        .version-card {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            text-align: center;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            cursor: pointer;
+            border: 3px solid transparent;
+        }
+
+        .version-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 30px 80px rgba(0, 0, 0, 0.4);
+            border-color: #667eea;
+        }
+
+        .version-card h2 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 15px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .version-card .icon {
+            font-size: 4rem;
+            margin-bottom: 20px;
+            color: #667eea;
+        }
+
+        .version-card .badge {
+            display: inline-block;
+            margin-bottom: 15px;
+            font-size: 0.9rem;
+        }
+
+        .version-card p {
+            color: #666;
+            font-size: 1rem;
+            line-height: 1.6;
+            margin-bottom: 20px;
+        }
+
+        .version-card .btn {
+            font-size: 1.1rem;
+            padding: 12px 40px;
+            border-radius: 10px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .v1-btn {
+            background: #f8f9fa;
+            color: #667eea;
+            border: 2px solid #667eea;
+        }
+
+        .v1-btn:hover {
+            background: #667eea;
+            color: white;
+        }
+
+        .v2-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+        }
+
+        .v2-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 60px;
+        }
+
+        .header h1 {
+            font-size: 3rem;
+            font-weight: 700;
+            margin-bottom: 10px;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        .header p {
+            font-size: 1.2rem;
+            opacity: 0.95;
+        }
+
+        .row-center {
+            display: flex;
+            gap: 30px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .col-custom {
+            flex: 1;
+            min-width: 300px;
+            max-width: 400px;
+        }
+
+        .features {
+            text-align: left;
+            margin-top: 25px;
+            padding-top: 25px;
+            border-top: 1px solid #eee;
+        }
+
+        .features .feature {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+            font-size: 0.95rem;
+            color: #555;
+        }
+
+        .features .feature i {
+            margin-right: 10px;
+            color: #667eea;
+            font-size: 1.2rem;
+        }
+
+        .v2-new {
+            display: inline-block;
+            background: #ff6b6b;
+            color: white;
+            padding: 4px 10px;
+            border-radius: 5px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            margin-left: 5px;
+        }
+
+        @media (max-width: 768px) {
+            .version-card {
+                padding: 30px;
+            }
+
+            .version-card h2 {
+                font-size: 1.8rem;
+            }
+
+            .header h1 {
+                font-size: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container-center">
+        <div class="header">
+            <h1><i class="bi bi-book-fill"></i> 수학의 힘</h1>
+            <p>학원관리 시스템 v2로 업그레이드되었습니다!</p>
+        </div>
+
+        <div class="row-center">
+            <!-- v1 카드 -->
+            <div class="col-custom">
+                <div class="version-card">
+                    <div class="icon"><i class="bi bi-clock-history"></i></div>
+                    <h2>v1</h2>
+                    <span class="badge bg-secondary">안정 버전</span>
+                    <p>기존의 안정적인 버전입니다.<br>
+                    현재 운영 중인 모든 기능이 포함되어 있습니다.</p>
+
+                    <div class="features">
+                        <div class="feature">
+                            <i class="bi bi-check-circle-fill"></i>
+                            <span>학생 관리</span>
+                        </div>
+                        <div class="feature">
+                            <i class="bi bi-check-circle-fill"></i>
+                            <span>시간표 관리</span>
+                        </div>
+                        <div class="feature">
+                            <i class="bi bi-check-circle-fill"></i>
+                            <span>출결 관리</span>
+                        </div>
+                        <div class="feature">
+                            <i class="bi bi-check-circle-fill"></i>
+                            <span>보강 관리</span>
+                        </div>
+                        <div class="feature">
+                            <i class="bi bi-check-circle-fill"></i>
+                            <span>상담 기록</span>
+                        </div>
+                    </div>
+
+                    <button class="btn v1-btn w-100 mt-4" onclick="goToVersion('v1')">
+                        v1 시작하기
+                    </button>
+                </div>
+            </div>
+
+            <!-- v2 카드 -->
+            <div class="col-custom">
+                <div class="version-card" style="border-color: #764ba2; box-shadow: 0 20px 60px rgba(118, 75, 162, 0.3);">
+                    <div class="icon"><i class="bi bi-star-fill"></i></div>
+                    <h2>v2 <span class="v2-new">NEW</span></h2>
+                    <span class="badge" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">최신 버전</span>
+                    <p>새로운 기능과 개선사항이 가득한 최신 버전입니다.<br>
+                    더욱 효율적인 학원 관리를 경험하세요!</p>
+
+                    <div class="features">
+                        <div class="feature">
+                            <i class="bi bi-check-circle-fill"></i>
+                            <span>v1의 모든 기능</span>
+                        </div>
+                        <div class="feature">
+                            <i class="bi bi-check-circle-fill"></i>
+                            <span>강화된 대시보드 <span class="v2-new">NEW</span></span>
+                        </div>
+                        <div class="feature">
+                            <i class="bi bi-check-circle-fill"></i>
+                            <span>학생 상세정보 <span class="v2-new">NEW</span></span>
+                        </div>
+                        <div class="feature">
+                            <i class="bi bi-check-circle-fill"></i>
+                            <span>교재 진도 관리 <span class="v2-new">NEW</span></span>
+                        </div>
+                        <div class="feature">
+                            <i class="bi bi-check-circle-fill"></i>
+                            <span>SMS 발송 관리 <span class="v2-new">NEW</span></span>
+                        </div>
+                    </div>
+
+                    <button class="btn v2-btn w-100 mt-4" onclick="goToVersion('v2')">
+                        v2 시작하기 ⭐
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div style="text-align: center; margin-top: 50px; color: white;">
+            <p style="font-size: 0.9rem; opacity: 0.8;">
+                <i class="bi bi-info-circle"></i>
+                선택한 버전은 localStorage에 저장되어 다음 방문 시에도 유지됩니다.
+            </p>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        function goToVersion(version) {
+            // localStorage에 선택한 버전 저장
+            localStorage.setItem('selectedVersion', version);
+
+            // 해당 버전의 index.html로 이동
+            if (version === 'v1') {
+                window.location.href = './index.html';
+            } else if (version === 'v2') {
+                window.location.href = './v2/index.html';
+            }
+        }
+
+        // 페이지 로드 시 이전에 선택한 버전이 있으면 자동 이동
+        window.addEventListener('load', function() {
+            const selectedVersion = localStorage.getItem('selectedVersion');
+            if (selectedVersion && selectedVersion === 'v2') {
+                // 3초 후 자동으로 v2로 이동 (사용자가 원하면 취소 가능)
+                // goToVersion('v2');
+            }
+        });
+    </script>
+</body>
+</html>
