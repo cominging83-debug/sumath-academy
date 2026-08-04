@@ -29,7 +29,24 @@
       "Bash(git commit -m ' *)",
       "Bash(git config *)",
       "Bash(git add *)",
-      "Bash(git commit -m 'Claude Code 설정 업데이트 *)"
+      "Bash(git commit -m 'Claude Code 설정 업데이트 *)",
+      "Bash(awk '/^window.loadDashboardView/,/^window\\\\.[a-zA-Z]/ {print NR\": \"$0}' app.js)",
+      "Bash(git commit -m 'Phase 4: 대시보드 KPI 카드 추가 \\(오늘 수업, 출석률, 신규 등록, 미완료 보강\\) *)",
+      "Bash(git push *)",
+      "Bash(git commit -m '🎨 대시보드 UI 대폭 개선 - 히어로 섹션 추가 *)",
+      "Bash(python -m http.server 8000 --directory sheets_app)",
+      "Bash(git commit -m '🚨 대시보드 위험군 알람 + 강사별 통계 추가 *)",
+      "Bash(git commit -m '📋 대시보드 기준 명시 + 진도율 TOP 5 추가 *)",
+      "Bash(vercel deploy *)",
+      "Bash(vercel list *)",
+      "Bash(git remote *)",
+      "Bash(vercel projects *)",
+      "Bash(vercel project *)",
+      "Bash(vercel link *)",
+      "Bash(git commit -m 'fix: 위험군 알람에서 퇴원생 제외 *)",
+      "Bash(git commit -m 'fix: 학생 상태 변경 시 배열 인덱싱 오류 \\(한 칸 밀림\\) *)",
+      "Bash(git commit -m 'fix: 상담 요청 저장 시 appendSheetData 함수 없음 *)",
+      "Bash(git commit -m 'fix: 위험군 학생 클릭 시 상세보기 안 됨 *)"
     ]
   }
 }

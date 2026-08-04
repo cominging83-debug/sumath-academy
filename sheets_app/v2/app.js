@@ -209,13 +209,6 @@ window.forceRefresh = function () {
 // 🚀 관제탑 대시보드 (코어 엔진 유지 + 사라진 4개 위젯 완벽 부활!)
 // =================================================================
 window.loadDashboardView = function () {
-  // 원장만 대시보드 접근 가능
-  if (appCache.user.role !== '원장' && appCache.user.role !== '데스크') {
-    alert('대시보드는 원장만 볼 수 있습니다.');
-    loadStudentView(); // 학생 관리로 이동
-    return;
-  }
-
   const schedules = (appCache.raw && appCache.raw.schedules) || [];
   const today = new Date();
   const todayKor = ['일', '월', '화', '수', '목', '금', '토'][today.getDay()];
@@ -477,7 +470,8 @@ window.loadDashboardView = function () {
         </div>
       </div>
 
-      <!-- 📊 Phase 4 KPI 히어로 섹션 -->
+      ${isManager ? `
+      <!-- 📊 Phase 4 KPI 히어로 섹션 (원장용) -->
       <div style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); border-radius: 16px; padding: 2rem; margin-top: 1rem; margin-bottom: 2rem; box-shadow: 0 10px 40px rgba(0,0,0,0.15);">
         <div class="mb-3">
           <h5 class="text-white fw-bold m-0"><i class="bi bi-star-fill text-warning me-2"></i>오늘의 핵심 지표</h5>
@@ -549,10 +543,11 @@ window.loadDashboardView = function () {
           </div>
         </div>
       </div>
+      ` : ''}
     </div>
 
     <!-- 🚨 주의 필요한 학생 (위험군 알람) -->
-    ${atRiskStudents.length > 0 ? `
+    ${isManager && atRiskStudents.length > 0 ? `
     <div style="background: linear-gradient(135deg, #7f1d1d 0%, #5f0f0f 100%); border-radius: 16px; padding: 2rem; margin-bottom: 2rem; box-shadow: 0 10px 40px rgba(220, 38, 38, 0.2);">
       <div class="d-flex justify-content-between align-items-start mb-2">
         <h5 class="text-white fw-bold m-0"><i class="bi bi-exclamation-triangle-fill text-danger me-2"></i>🚨 주의 필요한 학생 (${atRiskStudents.length}명)</h5>
@@ -635,7 +630,8 @@ window.loadDashboardView = function () {
       </div>
     </div>
 
-    <!-- 👨‍🏫 강사별 수업 현황 & 선생님별 학생 현황 -->
+    <!-- 👨‍🏫 강사별 수업 현황 & 선생님별 학생 현황 (원장용) -->
+    ${isManager ? `
     <div class="row g-4 mt-2 mb-4">
       <div class="col-lg-6">
         <div class="card border-0 shadow-sm h-100" style="border-radius: 16px;">
@@ -703,8 +699,10 @@ window.loadDashboardView = function () {
         </div>
       </div>
     </div>
+    ` : ''}
 
-    <!-- 📚 진도율 TOP 5 섹션 -->
+    <!-- 📚 진도율 TOP 5 섹션 (원장용) -->
+    ${isManager ? `
     <div class="row g-4 mt-4 mb-4">
       <div class="col-lg-12">
         <div class="card border-0 shadow-sm h-100" style="border-radius: 16px;">
@@ -758,6 +756,7 @@ window.loadDashboardView = function () {
         </div>
       </div>
     </div>
+    ` : ''}
 
     <div class="row g-4 mt-2">
       <div class="col-lg-6">
