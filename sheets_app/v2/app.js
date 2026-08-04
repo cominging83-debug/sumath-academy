@@ -5666,7 +5666,8 @@ window.saveCounselRequest = async function() {
     ];
 
     const sheetName = CONFIG.SHEETS.COUNSEL;
-    await appendSheetData(CONFIG.SPREADSHEET_ID, sheetName, [rowData]);
+    const body = { values: [rowData] };
+    await callSheetsAPI('POST', `/values/${encodeURIComponent(sheetName)}:append?valueInputOption=USER_ENTERED`, body);
 
     alert('상담 요청이 저장되었습니다!');
     bootstrap.Modal.getInstance(document.getElementById('counselRequestModal')).hide();
