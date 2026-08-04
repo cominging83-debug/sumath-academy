@@ -5221,7 +5221,7 @@ window.loadCounselRequestView = function() {
     <div class="container-fluid py-4">
       <div class="d-flex justify-content-between align-items-center mb-4">
         <h3 class="fw-bold m-0"><i class="bi bi-calendar-check text-info me-2"></i>상담 요청 현황</h3>
-        ${isManager ? `<button class="btn btn-primary btn-sm" onclick="openCounselRequestModal()"><i class="bi bi-plus-circle me-1"></i>새 요청</button>` : ''}
+        <button class="btn btn-primary btn-sm" onclick="openCounselRequestModal()"><i class="bi bi-plus-circle me-1"></i>새 요청</button>
       </div>
 
       <div class="row g-3 mb-4">
@@ -5329,7 +5329,7 @@ window.loadCounselRequestView = function() {
     </div>
   `;
 
-  document.getElementById('mainContent').innerHTML = html;
+  document.getElementById('view-container').innerHTML = html;
 };
 
 window.markCounselComplete = async function(date, studentName) {
