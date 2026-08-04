@@ -215,6 +215,28 @@ window.loadDashboardView = function () {
   const todayStr = today.toISOString().substring(0, 10);
   const isManager = (appCache.user.role === '원장' || appCache.user.role === '데스크');
 
+  // 📊 KPI 데이터 계산
+  const thisMonthStart = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().split('T')[0];
+  const thisMonthAttendance = (appCache.raw.attendance || []).slice(1).filter(a =>
+    a[3] && a[3] >= thisMonthStart && a[3] <= todayStr
+  );
+
+  // KPI 1: 오늘 수업 건수
+  const todayClasses = schedules.filter(s => s[4] === todayKor && s[6] && s[7]).length;
+
+  // KPI 2: 이번달 출석률
+  const thisMonthPresent = thisMonthAttendance.filter(a => a[5] === '출석').length;
+  const thisMonthTotal = thisMonthAttendance.filter(a => ['출석', '결석', '보강'].includes(a[5])).length;
+  const attendanceRate = thisMonthTotal > 0 ? Math.round((thisMonthPresent / thisMonthTotal) * 100) : 0;
+
+  // KPI 3: 신규 등록 (이번달)
+  const students = (appCache.raw.students || []).slice(1);
+  const newStudents = students.filter(s => s[7] === '재원' && s[8] && s[8] >= thisMonthStart).length;
+
+  // KPI 4: 미완료 보강
+  const makeups = (appCache.raw['보강일정DB'] || []).slice(1);
+  const incompleteMakeups = makeups.filter(m => m[8] !== '완료').length;
+
   const bands = todayKor === '토' ?
     [{ start: 10 * 60, end: 12 * 60, label: '10:00~12:00' }, { start: 12 * 60, end: 14 * 60, label: '12:00~14:00' }, { start: 14 * 60, end: 16 * 60, label: '14:00~16:00' }] :
     [
@@ -379,6 +401,66 @@ window.loadDashboardView = function () {
             <div class="card-body p-2 d-flex flex-column justify-content-center align-items-center">
               <p class="text-muted small fw-bold mb-1">나의 전담</p>
               <h4 class="fw-bold m-0 text-success" style="color: #65a30d !important;">${myStudents.length}</h4>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 📊 Phase 4 KPI 카드 -->
+      <div class="row g-2 mt-3 mb-2">
+        <div class="col-lg-3">
+          <div class="card border-0 shadow-sm h-100" style="border-radius: 12px; background: linear-gradient(135deg, #ffffff, #e0f2fe); border-left: 4px solid #0284c7 !important;">
+            <div class="card-body p-3">
+              <div class="d-flex align-items-center justify-content-between">
+                <div>
+                  <p class="text-muted small fw-bold mb-1">📊 오늘 수업</p>
+                  <h3 class="fw-bold m-0 text-info">${todayClasses}</h3>
+                  <small class="text-muted">건수</small>
+                </div>
+                <i class="bi bi-calendar-event text-info" style="font-size: 2rem; opacity: 0.3;"></i>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="col-lg-3">
+          <div class="card border-0 shadow-sm h-100" style="border-radius: 12px; background: linear-gradient(135deg, #ffffff, #dcfce7); border-left: 4px solid #16a34a !important;">
+            <div class="card-body p-3">
+              <div class="d-flex align-items-center justify-content-between">
+                <div>
+                  <p class="text-muted small fw-bold mb-1">📈 이번달 출석률</p>
+                  <h3 class="fw-bold m-0" style="color: #16a34a;">${attendanceRate}%</h3>
+                  <small class="text-muted">${thisMonthPresent}/${thisMonthTotal}명</small>
+                </div>
+                <i class="bi bi-graph-up text-success" style="font-size: 2rem; opacity: 0.3;"></i>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="col-lg-3">
+          <div class="card border-0 shadow-sm h-100" style="border-radius: 12px; background: linear-gradient(135deg, #ffffff, #fef3c7); border-left: 4px solid #d97706 !important;">
+            <div class="card-body p-3">
+              <div class="d-flex align-items-center justify-content-between">
+                <div>
+                  <p class="text-muted small fw-bold mb-1">✨ 신규 등록</p>
+                  <h3 class="fw-bold m-0" style="color: #d97706;">${newStudents}</h3>
+                  <small class="text-muted">명</small>
+                </div>
+                <i class="bi bi-person-plus text-warning" style="font-size: 2rem; opacity: 0.3;"></i>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="col-lg-3">
+          <div class="card border-0 shadow-sm h-100" style="border-radius: 12px; background: linear-gradient(135deg, #ffffff, #fee2e2); border-left: 4px solid #dc2626 !important;">
+            <div class="card-body p-3">
+              <div class="d-flex align-items-center justify-content-between">
+                <div>
+                  <p class="text-muted small fw-bold mb-1">⏳ 미완료 보강</p>
+                  <h3 class="fw-bold m-0 text-danger">${incompleteMakeups}</h3>
+                  <small class="text-muted">건수</small>
+                </div>
+                <i class="bi bi-hourglass-split text-danger" style="font-size: 2rem; opacity: 0.3;"></i>
+              </div>
             </div>
           </div>
         </div>
