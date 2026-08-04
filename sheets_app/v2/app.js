@@ -1585,6 +1585,20 @@ window.openStudentProfileModal = function (studentId, studentName) {
         if (b.total > 0) {
           let pct = Math.min(100, Math.round((b.maxPage / b.total) * 100));
           let barColor = pct >= 90 ? 'bg-success' : (pct >= 50 ? 'bg-primary' : 'bg-warning');
+
+          // 예상 완료일 계산
+          let estimatedDate = '-';
+          if (pct > 0 && pct < 100 && b.lastDate) {
+            const lastDate = new Date(b.lastDate);
+            const today = new Date();
+            const daysElapsed = Math.max(1, Math.floor((today - lastDate) / (1000 * 60 * 60 * 24)) + 1);
+            const pagesPerDay = b.maxPage / daysElapsed;
+            const remainingPages = b.total - b.maxPage;
+            const daysRemaining = Math.max(1, Math.ceil(remainingPages / pagesPerDay));
+            const estimatedDateObj = new Date(today.getTime() + daysRemaining * 24 * 60 * 60 * 1000);
+            estimatedDate = estimatedDateObj.toISOString().split('T')[0];
+          }
+
           return `
                 <div class="mb-3">
                   <div class="d-flex justify-content-between mb-1 align-items-center">
@@ -1594,7 +1608,10 @@ window.openStudentProfileModal = function (studentId, studentName) {
                   <div class="progress shadow-sm" style="height: 10px; border-radius: 5px; background-color: #e2e8f0;">
                     <div class="progress-bar ${barColor} progress-bar-striped progress-bar-animated" style="width: ${pct}%;"></div>
                   </div>
-                  <div class="text-muted mt-1 text-end" style="font-size: 0.75rem;">현재 <b>${b.maxPage}</b> / 총 ${b.total}p</div>
+                  <div class="text-muted mt-1 d-flex justify-content-between" style="font-size: 0.75rem;">
+                    <span>현재 <b>${b.maxPage}</b> / 총 ${b.total}p</span>
+                    <span><i class="bi bi-calendar-check me-1"></i>예상 완료: <b>${estimatedDate}</b></span>
+                  </div>
                 </div>`;
         } else {
           return `
@@ -1746,7 +1763,30 @@ window.openStudentProfileModal = function (studentId, studentName) {
       });
     }
 
-    // 7. HTML 조립
+    // 7. 상담 요청 현황
+    let counselRequestHTML = '';
+    if (appCache.raw.counsels) {
+      const myRequests = appCache.raw.counsels.filter(c => (c[2] === studentId || c[1] === studentName) && c[9]); // 요청일자 있는 것만
+
+      if (myRequests.length > 0) {
+        const today = new Date().toISOString().split('T')[0];
+        const pending = myRequests.filter(c => c[10] && c[10] < today && c[11] !== '완료');
+        const inProgress = myRequests.filter(c => c[10] && c[11] !== '완료');
+        const completed = myRequests.filter(c => c[11] === '완료');
+
+        counselRequestHTML = `
+          <div class="alert alert-info py-2 px-3 mb-2 small" style="background-color: #cfe2ff; border-color: #b6d4fe;">
+            <div class="d-flex gap-2 flex-wrap">
+              ${pending.length > 0 ? `<span class="badge bg-danger">🔴 마감임박: ${pending.length}건</span>` : ''}
+              ${inProgress.length > 0 ? `<span class="badge bg-warning text-dark">🟡 진행중: ${inProgress.length}건</span>` : ''}
+              ${completed.length > 0 ? `<span class="badge bg-success">🟢 완료: ${completed.length}건</span>` : ''}
+            </div>
+          </div>
+        `;
+      }
+    }
+
+    // 8. HTML 조립
     const modalHTML = `
       <div class="d-flex align-items-center mb-4 p-3 bg-white rounded shadow-sm border">
         <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-3 shadow-sm" style="width: 64px; height: 64px; font-size: 1.8rem; font-weight: bold;">
@@ -1833,8 +1873,18 @@ window.openStudentProfileModal = function (studentId, studentName) {
           </div>
           
           <div class="card border-0 shadow-sm mb-3">
-            <div class="card-header bg-white border-bottom-0 pt-3 pb-0"><h6 class="fw-bold m-0 text-secondary"><i class="bi bi-chat-dots-fill me-2"></i>최근 상담 기록</h6></div>
-            <div class="card-body pt-2 pb-2">${counselsHTML}</div>
+            <div class="card-header bg-white border-bottom-0 pt-3 pb-0">
+              <div class="d-flex justify-content-between align-items-center">
+                <h6 class="fw-bold m-0 text-secondary"><i class="bi bi-chat-dots-fill me-2"></i>상담 기록 & 요청</h6>
+                <button class="btn btn-sm btn-outline-info fw-bold rounded-pill" onclick="openCounselRequestModal('${studentId}', '${studentName}')">
+                  <i class="bi bi-plus-circle me-1"></i>상담 요청
+                </button>
+              </div>
+            </div>
+            <div class="card-body pt-2 pb-2">
+              ${counselRequestHTML}
+              ${counselsHTML}
+            </div>
           </div>
         </div>
       </div>
