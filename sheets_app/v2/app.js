@@ -259,6 +259,7 @@ window.loadDashboardView = function () {
       const studentStatus = foundStudent ? foundStudent[7] : '재원'; // [7] = 상태
 
       studentRiskMap.set(studentId, {
+        id: studentId,
         name: studentName,
         absences: 0,
         noHomework: 0,
@@ -558,7 +559,7 @@ window.loadDashboardView = function () {
 
       <div class="mt-3">
         ${atRiskStudents.map((s, idx) => `
-          <div class="alert alert-danger border-0 mb-2 p-3" style="background: rgba(255,255,255,0.1); border-left: 4px solid #ef4444;" role="alert" onclick="openStudentProfileModal('${s.name}')" style="cursor:pointer;">
+          <div class="alert alert-danger border-0 mb-2 p-3" style="background: rgba(255,255,255,0.1); border-left: 4px solid #ef4444; cursor:pointer;" role="alert" onclick="openStudentProfileModal('${s.id}', '${s.name}')">
             <div class="d-flex justify-content-between align-items-center">
               <div>
                 <strong class="text-white">${idx + 1}. ${s.name}</strong>
