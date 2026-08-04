@@ -25,7 +25,11 @@
       "Bash(node -c v2/app.js)",
       "Bash(python3)",
       "Bash(node -c \"C:\\\\Users\\\\comin\\\\Desktop\\\\학원관리프로그램\\\\sheets_app\\\\v2\\\\app.js\")",
-      "Bash(awk '/^window.openStudentProfileModal/,/^window\\\\.[a-zA-Z]/ {print NR\": \"$0}' \"C:\\\\Users\\\\comin\\\\Desktop\\\\학원관리프로그램\\\\sheets_app\\\\v2\\\\app.js\")"
+      "Bash(awk '/^window.openStudentProfileModal/,/^window\\\\.[a-zA-Z]/ {print NR\": \"$0}' \"C:\\\\Users\\\\comin\\\\Desktop\\\\학원관리프로그램\\\\sheets_app\\\\v2\\\\app.js\")",
+      "Bash(git commit -m ' *)",
+      "Bash(git config *)",
+      "Bash(git add *)",
+      "Bash(git commit -m 'Claude Code 설정 업데이트 *)"
     ]
   }
 }
