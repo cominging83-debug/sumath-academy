@@ -209,6 +209,13 @@ window.forceRefresh = function () {
 // 🚀 관제탑 대시보드 (코어 엔진 유지 + 사라진 4개 위젯 완벽 부활!)
 // =================================================================
 window.loadDashboardView = function () {
+  // 원장만 대시보드 접근 가능
+  if (appCache.user.role !== '원장' && appCache.user.role !== '데스크') {
+    alert('대시보드는 원장만 볼 수 있습니다.');
+    loadStudentView(); // 학생 관리로 이동
+    return;
+  }
+
   const schedules = (appCache.raw && appCache.raw.schedules) || [];
   const today = new Date();
   const todayKor = ['일', '월', '화', '수', '목', '금', '토'][today.getDay()];
