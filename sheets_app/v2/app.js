@@ -5441,7 +5441,7 @@ window.markStudentAsPaused = async function(studentId, studentName) {
 
   try {
     const today = new Date().toISOString().substring(0, 10);
-    const students = (appCache.raw.students || []).slice(1);
+    const students = (appCache.raw.students || []);
     const studentRowIdx = students.findIndex(s => s[0] === studentId);
 
     if (studentRowIdx === -1) {
@@ -5456,8 +5456,8 @@ window.markStudentAsPaused = async function(studentId, studentName) {
     await callSheetsAPI('PUT', `/values/${encodeURIComponent(sheetName + '!H' + rowNum)}?valueInputOption=USER_ENTERED`, { values: [['휴원']] });
     await callSheetsAPI('PUT', `/values/${encodeURIComponent(sheetName + '!I' + rowNum)}?valueInputOption=USER_ENTERED`, { values: [[today]] });
 
-    appCache.raw.students[studentRowIdx + 1][7] = '휴원';
-    appCache.raw.students[studentRowIdx + 1][8] = today;
+    appCache.raw.students[studentRowIdx][7] = '휴원';
+    appCache.raw.students[studentRowIdx][8] = today;
 
     alert(`${studentName} 학생이 휴원 처리되었습니다.`);
 
@@ -5475,23 +5475,23 @@ window.markStudentAsWithdrawn = async function(studentId, studentName) {
 
   try {
     const today = new Date().toISOString().substring(0, 10);
-    const students = (appCache.raw.students || []).slice(1);
+    const students = (appCache.raw.students || []);
     const studentRowIdx = students.findIndex(s => s[0] === studentId);
-    
+
     if (studentRowIdx === -1) {
       alert('학생 정보를 찾을 수 없습니다.');
       return;
     }
 
     const sheetName = '원천DB';
-    const rowNum = studentRowIdx + 2; // 헤더 1줄 + 시작줄
+    const rowNum = studentRowIdx + 2; // A2부터 시작하므로 인덱스 0 = 행 2
 
     // H컬럼(상태) = 퇴원, I컬럼(날짜) = 오늘
     await callSheetsAPI('PUT', `/values/${encodeURIComponent(sheetName + '!H' + rowNum)}?valueInputOption=USER_ENTERED`, { values: [['퇴원']] });
     await callSheetsAPI('PUT', `/values/${encodeURIComponent(sheetName + '!I' + rowNum)}?valueInputOption=USER_ENTERED`, { values: [[today]] });
 
-    appCache.raw.students[studentRowIdx + 1][7] = '퇴원';
-    appCache.raw.students[studentRowIdx + 1][8] = today;
+    appCache.raw.students[studentRowIdx][7] = '퇴원';
+    appCache.raw.students[studentRowIdx][8] = today;
 
     alert(`${studentName} 학생이 퇴원 처리되었습니다.`);
     
@@ -5509,23 +5509,23 @@ window.markStudentAsActive = async function(studentId, studentName) {
   if (!confirm(`${studentName} 학생을 복귀 처리하시겠습니까?`)) return;
 
   try {
-    const students = (appCache.raw.students || []).slice(1);
+    const students = (appCache.raw.students || []);
     const studentRowIdx = students.findIndex(s => s[0] === studentId);
-    
+
     if (studentRowIdx === -1) {
       alert('학생 정보를 찾을 수 없습니다.');
       return;
     }
 
     const sheetName = '원천DB';
-    const rowNum = studentRowIdx + 2;
+    const rowNum = studentRowIdx + 2; // A2부터 시작하므로 인덱스 0 = 행 2
 
     // H컬럼(상태) = 재원, I컬럼(날짜) = 빈칸
     await callSheetsAPI('PUT', `/values/${encodeURIComponent(sheetName + '!H' + rowNum)}?valueInputOption=USER_ENTERED`, { values: [['재원']] });
     await callSheetsAPI('PUT', `/values/${encodeURIComponent(sheetName + '!I' + rowNum)}?valueInputOption=USER_ENTERED`, { values: [['']] });
 
-    appCache.raw.students[studentRowIdx + 1][7] = '재원';
-    appCache.raw.students[studentRowIdx + 1][8] = '';
+    appCache.raw.students[studentRowIdx][7] = '재원';
+    appCache.raw.students[studentRowIdx][8] = '';
 
     alert(`${studentName} 학생이 복귀 처리되었습니다.`);
     
