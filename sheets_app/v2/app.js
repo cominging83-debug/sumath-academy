@@ -237,6 +237,59 @@ window.loadDashboardView = function () {
   const makeups = (appCache.raw['보강일정DB'] || []).slice(1);
   const incompleteMakeups = makeups.filter(m => m[8] !== '완료').length;
 
+  // 🚨 위험군 학생 분석
+  const thirtyDaysAgo = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+  const attendanceData = (appCache.raw.attendance || []).slice(1);
+
+  // 학생별 결석/숙제 통계 계산
+  const studentRiskMap = new Map();
+
+  attendanceData.forEach(record => {
+    const studentId = record[1]; // 학생ID
+    const studentName = record[2]; // 학생명
+    const attendDate = record[3]; // 출석일
+    const status = record[5]; // 출석여부
+    const homework = record[10]; // 숙제 (homework range)
+
+    if (!studentId || !attendDate || attendDate < thirtyDaysAgo) return;
+
+    if (!studentRiskMap.has(studentId)) {
+      studentRiskMap.set(studentId, { name: studentName, absences: 0, noHomework: 0, recentRecords: [] });
+    }
+
+    const entry = studentRiskMap.get(studentId);
+    if (status === '결석') entry.absences++;
+    if (!homework || homework.trim() === '') entry.noHomework++;
+    entry.recentRecords.push({ date: attendDate, status, homework });
+  });
+
+  // 위험군 필터링
+  const atRiskStudents = Array.from(studentRiskMap.values())
+    .filter(s => s.absences >= 3 || s.noHomework >= 3)
+    .sort((a, b) => (b.absences + b.noHomework) - (a.absences + a.noHomework))
+    .slice(0, 5); // TOP 5
+
+  // 강사별 수업 현황 계산
+  const teacherClassMap = new Map();
+  const teacherStudentMap = new Map();
+
+  schedules.forEach(s => {
+    if (!s[9]) return;
+    const teacher = s[9].split('(')[0].trim();
+    if (!teacherClassMap.has(teacher)) {
+      teacherClassMap.set(teacher, 0);
+      teacherStudentMap.set(teacher, new Set());
+    }
+    teacherClassMap.set(teacher, teacherClassMap.get(teacher) + 1);
+    if (s[0]) teacherStudentMap.get(teacher).add(s[0].split('(')[0].trim());
+  });
+
+  const teacherStats = Array.from(teacherClassMap.entries()).map(([name, classCount]) => ({
+    name,
+    classes: classCount,
+    students: teacherStudentMap.get(name).size
+  }));
+
   const bands = todayKor === '토' ?
     [{ start: 10 * 60, end: 12 * 60, label: '10:00~12:00' }, { start: 12 * 60, end: 14 * 60, label: '12:00~14:00' }, { start: 14 * 60, end: 16 * 60, label: '14:00~16:00' }] :
     [
@@ -480,6 +533,31 @@ window.loadDashboardView = function () {
       </div>
     </div>
 
+    <!-- 🚨 주의 필요한 학생 (위험군 알람) -->
+    ${atRiskStudents.length > 0 ? `
+    <div style="background: linear-gradient(135deg, #7f1d1d 0%, #5f0f0f 100%); border-radius: 16px; padding: 2rem; margin-bottom: 2rem; box-shadow: 0 10px 40px rgba(220, 38, 38, 0.2);">
+      <h5 class="text-white fw-bold m-0 mb-3"><i class="bi bi-exclamation-triangle-fill text-danger me-2"></i>🚨 주의 필요한 학생 (${atRiskStudents.length}명)</h5>
+      <small class="text-light">결석 3회 이상 또는 숙제 미제출 3회 이상</small>
+
+      <div class="mt-3">
+        ${atRiskStudents.map((s, idx) => `
+          <div class="alert alert-danger border-0 mb-2 p-3" style="background: rgba(255,255,255,0.1); border-left: 4px solid #ef4444;" role="alert" onclick="openStudentProfileModal('${s.name}')" style="cursor:pointer;">
+            <div class="d-flex justify-content-between align-items-center">
+              <div>
+                <strong class="text-white">${idx + 1}. ${s.name}</strong>
+                <div class="small text-light mt-1">
+                  ${s.absences >= 3 ? `<span class="badge bg-danger me-1">결석 ${s.absences}회</span>` : ''}
+                  ${s.noHomework >= 3 ? `<span class="badge bg-danger">숙제 미제출 ${s.noHomework}회</span>` : ''}
+                </div>
+              </div>
+              <i class="bi bi-chevron-right text-warning"></i>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+    ` : ''}
+
     <!-- 🎯 오늘의 핵심 업무 섹션 -->
     <div style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); border-radius: 16px; padding: 2rem; margin-bottom: 2rem; box-shadow: 0 10px 40px rgba(0,0,0,0.15);">
       <h5 class="text-white fw-bold m-0 mb-3"><i class="bi bi-lightning-fill text-warning me-2"></i>오늘의 핵심 업무</h5>
@@ -529,6 +607,75 @@ window.loadDashboardView = function () {
           </div>
         </div>
         ` : ''}
+      </div>
+    </div>
+
+    <!-- 👨‍🏫 강사별 수업 현황 & 선생님별 학생 현황 -->
+    <div class="row g-4 mt-2 mb-4">
+      <div class="col-lg-6">
+        <div class="card border-0 shadow-sm h-100" style="border-radius: 16px;">
+          <div class="card-header bg-primary text-white fw-bold border-0 p-4" style="border-radius: 16px 16px 0 0;">
+            <i class="bi bi-person-badge-fill me-2"></i>강사별 수업 현황
+          </div>
+          <div class="card-body p-4">
+            <div class="table-responsive">
+              <table class="table table-hover mb-0">
+                <thead>
+                  <tr class="text-muted small fw-bold">
+                    <th>강사명</th>
+                    <th class="text-center">수업수</th>
+                    <th class="text-center">담당학생</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${teacherStats.map(t => `
+                    <tr style="cursor:pointer; border-bottom: 1px solid #e5e7eb;">
+                      <td class="fw-bold text-dark">${t.name}</td>
+                      <td class="text-center"><span class="badge bg-info text-dark">${t.classes}</span></td>
+                      <td class="text-center"><span class="badge bg-success">${t.students}</span></td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-lg-6">
+        <div class="card border-0 shadow-sm h-100" style="border-radius: 16px;">
+          <div class="card-header bg-success text-white fw-bold border-0 p-4" style="border-radius: 16px 16px 0 0;">
+            <i class="bi bi-people-fill me-2"></i>선생님별 담당 학생 현황
+          </div>
+          <div class="card-body p-4">
+            <div class="table-responsive">
+              <table class="table table-hover mb-0">
+                <thead>
+                  <tr class="text-muted small fw-bold">
+                    <th>선생님</th>
+                    <th class="text-center">담당학생 수</th>
+                    <th class="text-center">상태</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${Array.from(teacherStudentMap.entries()).map(([teacher, students]) => {
+                    const studentCount = students.size;
+                    let statusBadge = 'bg-success';
+                    if (studentCount === 0) statusBadge = 'bg-secondary';
+                    else if (studentCount > 10) statusBadge = 'bg-warning text-dark';
+                    return `
+                      <tr style="cursor:pointer; border-bottom: 1px solid #e5e7eb;">
+                        <td class="fw-bold text-dark">${teacher}</td>
+                        <td class="text-center"><span class="badge bg-primary text-dark">${studentCount}</span></td>
+                        <td class="text-center"><span class="badge ${statusBadge}">${studentCount > 10 ? '많음' : (studentCount === 0 ? '없음' : '정상')}</span></td>
+                      </tr>
+                    `;
+                  }).join('')}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
