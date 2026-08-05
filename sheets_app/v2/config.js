@@ -32,9 +32,9 @@ const CONFIG = {
         MAKEUP: '보강일정DB'    // 보강 일정
     },
 
-    // 6. SMS 발송 시트 (별도)
+    // 6. SMS 발송 시트 (V2 전용)
     SMS_SHEET: {
-        SPREADSHEET_ID: '1hlklodChPmHcnD2_pEp6po6SjQaDhtBs9CtvntAvaP0',
+        SPREADSHEET_ID: '1QmNIHDT76K1owChT1PinOEEn6WqgF7uhb5vQcv9Bm3Q',
         SHEET_NAME: 'SMS발송'
     }
 };

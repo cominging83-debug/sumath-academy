@@ -184,7 +184,7 @@ async function loadInitialData() {
     if (!appCache.user) appCache.user = { email: '', name: '', role: '강사' };
     try {
         // 💡 [수정] 맨 끝에 issues 와 '이슈DB' 로드 명령을 추가했습니다!
-        const [teachers, students, schedules, attendance, counsels, books, tatt, classes, scores, templatesRaw, notices, makeups, issues] = await Promise.all([
+        const [teachers, students, schedules, attendance, counsels, books, tatt, classes, scores, templatesRaw, notices, makeups, issues, smsLogs] = await Promise.all([
             getOptionalSheetData(CONFIG.SHEETS.TEACHER, 'A2:L'),
             getOptionalSheetData(CONFIG.SHEETS.STUDENT, 'A2:P'),
             getOptionalSheetData(CONFIG.SHEETS.SCHEDULE, 'A2:N'),
@@ -197,11 +197,12 @@ async function loadInitialData() {
             getOptionalSheetData(CONFIG.SHEETS.ALIMTALK, 'A2:B'),
             getOptionalSheetData(CONFIG.SHEETS.NOTICE, 'A2:D'),
             getOptionalSheetData('보강일정DB', 'A2:I'),
-            getOptionalSheetData('이슈DB', 'A2:F') // 👈 이슈DB 눈 달아주기 완료!
+            getOptionalSheetData('이슈DB', 'A2:F'),
+            getSmsLogData() // SMS 발송 로그 (별도 Sheet)
         ]);
 
         // 💡 [수정] 가져온 issues 데이터를 메모리(appCache)에 등록합니다.
-        appCache.raw = { teachers, students, schedules, attendance, counsels, books, tatt, classes, scores, notices, '보강일정DB': makeups, '이슈DB': issues };
+        appCache.raw = { teachers, students, schedules, attendance, counsels, books, tatt, classes, scores, notices, '보강일정DB': makeups, '이슈DB': issues, smsLogs };
 
         globalSourceStudents = students.map(s => s[1]).filter(name => name);
         appCache.templates = templatesRaw.map(r => ({ title: r[0], content: r[1] })).filter(t => t.title);
@@ -471,4 +472,28 @@ async function ensureScoreSheet() {
         return true;
     }
     return false;
+}
+
+// SMS 발송 데이터 조회 (V2_SMS발송 Sheet)
+async function getSmsLogData() {
+    try {
+        const customSpreadsheetId = CONFIG.SMS_SHEET.SPREADSHEET_ID;
+        const range = `${CONFIG.SMS_SHEET.SHEET_NAME}!A2:F`;
+        const result = await callSheetsAPI('GET', `/values/${encodeURIComponent(range)}`, null, customSpreadsheetId);
+        return result.values || [];
+    } catch (e) {
+        console.warn('SMS 발송 로그 조회 실패:', e);
+        return [];
+    }
+}
+
+// SMS 데이터 앱 캐시에 로드
+async function loadSmsLogData() {
+    try {
+        const smsLogs = await getSmsLogData();
+        appCache.raw.smsLogs = smsLogs;
+    } catch (e) {
+        console.warn('SMS 로그 로드 실패', e);
+        appCache.raw.smsLogs = [];
+    }
 }

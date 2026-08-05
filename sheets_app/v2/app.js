@@ -8,7 +8,8 @@ let appCache = {
   user: null,
   raw: null,      // 시트 원본 데이터
   schedule: null, // 파싱된 시간표
-  templates: []   // 알림톡 템플릿 캐시
+  templates: [],  // 알림톡 템플릿 캐시
+  smsLogs: []     // SMS 발송 로그
 };
 let globalSourceStudents = []; // 원천DB 학생 명단 (수강 등록용)
 let allEvents = []; // 전체 수업 일정 명단 (출결 모달 매크로용)
@@ -208,7 +209,7 @@ window.forceRefresh = function () {
 // =================================================================
 // 🚀 관제탑 대시보드 (코어 엔진 유지 + 사라진 4개 위젯 완벽 부활!)
 // =================================================================
-window.loadDashboardView = function () {
+window.renderOperationalDashboardView = function (targetId) {
   const schedules = (appCache.raw && appCache.raw.schedules) || [];
   const today = new Date();
   const todayKor = ['일', '월', '화', '수', '목', '금', '토'][today.getDay()];
@@ -807,9 +808,15 @@ window.loadDashboardView = function () {
     </div>
   `;
 
-  document.getElementById('view-container').innerHTML = html;
+  document.getElementById(targetId || 'view-container').innerHTML = html;
   if (window.refreshDashboardTodos) window.refreshDashboardTodos();
   if (typeof loadTeacherDashboardWidgets === 'function') loadTeacherDashboardWidgets();
+
+  // SMS 발송 현황 위젯 추가
+  const smsWidget = window.renderSmsSummary ? window.renderSmsSummary() : '';
+  if (smsWidget && document.getElementById('dashboard-bottom-widgets')) {
+    document.getElementById('dashboard-bottom-widgets').innerHTML = smsWidget;
+  }
 
   // 기준 설명 모달 추가
   const criteriaModalHTML = `
@@ -868,6 +875,276 @@ window.loadDashboardView = function () {
   if (!document.getElementById('atRiskCriteriaModal')) {
     document.body.insertAdjacentHTML('beforeend', criteriaModalHTML);
   }
+};
+
+// =================================================================
+// 경영 대시보드 (원장 전용) - 더케이학원 스타일 참고
+// =================================================================
+window.renderManagementDashboardView = function (targetId) {
+  const students = (appCache.raw.students || []).slice(1);
+  const today = new Date();
+  const todayStr = today.toISOString().substring(0, 10);
+  const thisMonthStart = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().split('T')[0];
+
+  // 상태별 카운트
+  const activeCount = students.filter(s => s[7] === '재원').length;
+  const pausedCount = students.filter(s => s[7] === '휴원').length;
+
+  // 이번달 신입 / 퇴원 (I열 날짜 기준 - 등록일과 상태변경일이 같은 열이라 완전히 정확하진 않을 수 있음)
+  const newThisMonth = students.filter(s => s[7] === '재원' && s[8] && s[8] >= thisMonthStart).length;
+  const withdrawnThisMonth = students.filter(s => s[7] === '퇴원' && s[8] && s[8] >= thisMonthStart).length;
+
+  // 월별 신입/퇴원 추이 (최근 6개월)
+  const monthLabels = [];
+  const monthNew = [];
+  const monthWithdrawn = [];
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(today.getFullYear(), today.getMonth() - i, 1);
+    const monthKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    const monthEndDate = new Date(d.getFullYear(), d.getMonth() + 1, 0).toISOString().split('T')[0];
+    const monthStartDate = d.toISOString().split('T')[0];
+    monthLabels.push(`${d.getMonth() + 1}월`);
+    monthNew.push(students.filter(s => s[7] === '재원' && s[8] && s[8] >= monthStartDate && s[8] <= monthEndDate).length);
+    monthWithdrawn.push(students.filter(s => s[7] === '퇴원' && s[8] && s[8] >= monthStartDate && s[8] <= monthEndDate).length);
+  }
+
+  const html = `
+    <div class="pt-3 pb-2">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h4 class="fw-bold m-0 text-dark">📊 경영 대시보드</h4>
+        <div class="badge bg-white text-dark border shadow-sm px-3 py-2 fs-6"><i class="bi bi-calendar-check me-2 text-primary"></i>${todayStr}</div>
+      </div>
+
+      <div class="row g-3 mb-4">
+        <div class="col-md-3 col-6">
+          <div class="card border-0 shadow-sm h-100" style="border-radius: 12px; border-bottom: 4px solid #2563eb !important;">
+            <div class="card-body p-3 text-center">
+              <div class="text-muted small fw-bold mb-1">전체 재원생</div>
+              <div class="fs-3 fw-bold text-primary">${activeCount}<span class="fs-6 text-muted"> 명</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-3 col-6">
+          <div class="card border-0 shadow-sm h-100" style="border-radius: 12px; border-bottom: 4px solid #10b981 !important;">
+            <div class="card-body p-3 text-center">
+              <div class="text-muted small fw-bold mb-1">이번달 신입</div>
+              <div class="fs-3 fw-bold text-success">${newThisMonth}<span class="fs-6 text-muted"> 명</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-3 col-6">
+          <div class="card border-0 shadow-sm h-100" style="border-radius: 12px; border-bottom: 4px solid #ef4444 !important;">
+            <div class="card-body p-3 text-center">
+              <div class="text-muted small fw-bold mb-1">이번달 퇴원</div>
+              <div class="fs-3 fw-bold text-danger">${withdrawnThisMonth}<span class="fs-6 text-muted"> 명</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-3 col-6">
+          <div class="card border-0 shadow-sm h-100" style="border-radius: 12px; border-bottom: 4px solid #f59e0b !important;">
+            <div class="card-body p-3 text-center">
+              <div class="text-muted small fw-bold mb-1">휴원중</div>
+              <div class="fs-3 fw-bold" style="color:#d97706;">${pausedCount}<span class="fs-6 text-muted"> 명</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card border-0 shadow-sm mb-3">
+        <div class="card-header bg-white border-bottom-0 pt-3 pb-0">
+          <h6 class="fw-bold m-0 text-secondary"><i class="bi bi-graph-up me-2"></i>월별 신입·퇴원 추이 (최근 6개월)</h6>
+        </div>
+        <div class="card-body">
+          <canvas id="monthlyTrendChart" height="90"></canvas>
+        </div>
+      </div>
+
+      <div class="alert alert-secondary border-0 small mb-0" style="background:#f1f5f9;">
+        <i class="bi bi-info-circle me-1"></i>
+        퇴원 사유 분석 · 재등록률은 아직 데이터가 쌓이지 않아 표시하지 않습니다. (원천DB에 퇴원사유 입력 및 등록일/퇴원일 분리가 필요합니다)
+      </div>
+    </div>
+  `;
+
+  document.getElementById(targetId || 'view-container').innerHTML = html;
+
+  setTimeout(() => {
+    const ctx = document.getElementById('monthlyTrendChart');
+    if (ctx && typeof Chart !== 'undefined') {
+      new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: monthLabels,
+          datasets: [
+            { label: '신입', data: monthNew, backgroundColor: '#10b981' },
+            { label: '퇴원', data: monthWithdrawn, backgroundColor: '#ef4444' }
+          ]
+        },
+        options: {
+          responsive: true,
+          plugins: { legend: { position: 'top' } },
+          scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
+        }
+      });
+    }
+  }, 50);
+};
+
+// =================================================================
+// 대시보드 라우터 (운영/경영 탭 전환, 원장만 탭 노출)
+// =================================================================
+window.loadDashboardView = function () {
+  const isManager = (appCache.user.role === '원장' || appCache.user.role === '데스크');
+
+  if (!isManager) {
+    window.renderOperationalDashboardView();
+    return;
+  }
+
+  const activeTab = window.currentDashboardTab || 'operation';
+  const wrapperHTML = `
+    <div class="mb-3">
+      <ul class="nav nav-pills gap-2" role="tablist">
+        <li class="nav-item">
+          <button class="btn ${activeTab === 'operation' ? 'btn-primary' : 'btn-outline-secondary'} fw-bold rounded-pill px-3" onclick="window.switchDashboardTab('operation')">
+            <i class="bi bi-speedometer2 me-1"></i>운영 대시보드
+          </button>
+        </li>
+        <li class="nav-item">
+          <button class="btn ${activeTab === 'management' ? 'btn-primary' : 'btn-outline-secondary'} fw-bold rounded-pill px-3" onclick="window.switchDashboardTab('management')">
+            <i class="bi bi-bar-chart-line me-1"></i>경영 대시보드
+          </button>
+        </li>
+      </ul>
+    </div>
+    <div id="dashboard-tab-content"></div>
+  `;
+  document.getElementById('view-container').innerHTML = wrapperHTML;
+
+  if (activeTab === 'management') {
+    window.renderManagementDashboardView('dashboard-tab-content');
+  } else {
+    window.renderOperationalDashboardView('dashboard-tab-content');
+  }
+};
+
+window.switchDashboardTab = function (tab) {
+  window.currentDashboardTab = tab;
+  window.loadDashboardView();
+};
+
+// =================================================================
+// SMS 발송 현황 헬퍼 함수들
+// =================================================================
+window.getStudentSmsLogs = function (studentId, studentName) {
+  const smsLogs = (appCache.raw && appCache.raw.smsLogs) || [];
+  return smsLogs.filter(log => {
+    const logStudentId = log[0] || '';
+    const logStudentName = log[1] || '';
+    return logStudentId === studentId || logStudentName === studentName;
+  });
+};
+
+window.getTodaySmsStats = function () {
+  const today = new Date().toISOString().substring(0, 10);
+  const smsLogs = (appCache.raw && appCache.raw.smsLogs) || [];
+  const todaysLogs = smsLogs.filter(log => {
+    const logDate = (log[2] || '').substring(0, 10); // A열: 발송일시
+    return logDate === today;
+  });
+
+  const stats = { total: 0, success: 0, fail: 0, noPhone: 0, byTeacher: {} };
+  todaysLogs.forEach(log => {
+    const teacher = log[4] || '미확인'; // F열: 강사명
+    const status = log[3] || ''; // E열: 발송상태 (완료/실패/번호누락)
+
+    stats.total++;
+    if (status === '완료') stats.success++;
+    else if (status === '번호누락') stats.noPhone++;
+    else stats.fail++;
+
+    if (!stats.byTeacher[teacher]) stats.byTeacher[teacher] = { total: 0, success: 0, fail: 0 };
+    stats.byTeacher[teacher].total++;
+    if (status === '완료') stats.byTeacher[teacher].success++;
+    else stats.byTeacher[teacher].fail++;
+  });
+
+  return { today, stats, todaysLogs };
+};
+
+window.renderSmsSummary = function () {
+  const { today, stats } = window.getTodaySmsStats();
+
+  if (stats.total === 0) return '';
+
+  const successRate = stats.total > 0 ? Math.round((stats.success / stats.total) * 100) : 0;
+  const teacherRows = Object.entries(stats.byTeacher)
+    .sort((a, b) => b[1].total - a[1].total)
+    .map(([teacher, counts]) => `
+      <tr class="small">
+        <td class="fw-bold">${teacher}</td>
+        <td class="text-center"><span class="badge bg-success">${counts.success}</span></td>
+        <td class="text-center"><span class="badge bg-danger">${counts.fail}</span></td>
+        <td class="text-center">${counts.total}</td>
+      </tr>
+    `).join('');
+
+  return `
+    <div class="mt-4">
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white border-bottom-0 pt-3 pb-0">
+          <h6 class="fw-bold m-0 text-secondary"><i class="bi bi-telephone-fill me-2"></i>📱 SMS 발송 현황 (${today})</h6>
+        </div>
+        <div class="card-body">
+          <div class="row g-2 mb-3">
+            <div class="col-md-3">
+              <div class="badge bg-light text-dark border p-3 px-3 fw-bold shadow-sm w-100 text-center">
+                <div class="small text-muted">총 발송</div>
+                <div class="fs-5">${stats.total}건</div>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 p-3 px-3 fw-bold shadow-sm w-100 text-center">
+                <div class="small">✅ 성공</div>
+                <div class="fs-5">${stats.success}건</div>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25 p-3 px-3 fw-bold shadow-sm w-100 text-center">
+                <div class="small">❌ 실패</div>
+                <div class="fs-5">${stats.fail}건</div>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="badge bg-warning bg-opacity-10 text-warning border border-warning border-opacity-25 p-3 px-3 fw-bold shadow-sm w-100 text-center">
+                <div class="small">📵 번호누락</div>
+                <div class="fs-5">${stats.noPhone}건</div>
+              </div>
+            </div>
+          </div>
+          <div class="progress mb-3" style="height: 20px; border-radius: 8px;">
+            <div class="progress-bar bg-success" style="width: ${successRate}%;" title="성공: ${successRate}%"></div>
+            <div class="progress-bar bg-danger" style="width: ${stats.fail > 0 ? Math.round((stats.fail / stats.total) * 100) : 0}%;"></div>
+          </div>
+          <div class="table-responsive">
+            <table class="table table-sm table-hover mb-0">
+              <thead class="table-light">
+                <tr class="small">
+                  <th>선생님</th>
+                  <th class="text-center">✅ 성공</th>
+                  <th class="text-center">❌ 실패</th>
+                  <th class="text-center">합계</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${teacherRows || '<tr><td colspan="4" class="text-center text-muted small">발송 기록이 없습니다.</td></tr>'}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
 };
 
 // =================================================================
@@ -2095,6 +2372,22 @@ window.openStudentProfileModal = function (studentId, studentName) {
       }
     }
 
+    // 4-1. SMS 발송 이력 (신규)
+    let smsHistoryHTML = '<div class="small text-muted">발송 기록이 없습니다.</div>';
+    const mySmsLogs = window.getStudentSmsLogs(studentId, studentName);
+    if (mySmsLogs && mySmsLogs.length > 0) {
+      smsHistoryHTML = mySmsLogs.slice(-5).reverse().map(log => {
+        const date = log[2] ? log[2].substring(0, 10) : '-';
+        const status = log[3] || '미정';
+        const statusColor = status === '완료' ? 'success' : (status === '실패' || status === '번호누락' ? 'danger' : 'warning');
+        return `
+          <div class="border-start border-3 border-${statusColor} ps-2 mb-2">
+            <div class="small fw-bold text-${statusColor}">${date} · ${status}</div>
+            <div class="small text-muted text-truncate" style="max-width: 200px;" title="${log[1] || ''}">${log[1] || '-'}</div>
+          </div>`;
+      }).join('');
+    }
+
     // 5. 최근 출결 및 달력
     let attHTML = '<tr><td colspan="4" class="text-muted small text-center py-3">출결 내역이 없습니다.</td></tr>';
     let hwStatsHTML = '<div class="text-muted small">출결 기록이 없습니다.</div>';
@@ -2315,6 +2608,16 @@ window.openStudentProfileModal = function (studentId, studentName) {
             <div class="card-body pt-2 pb-2">
               ${counselRequestHTML}
               ${counselsHTML}
+            </div>
+          </div>
+
+          <!-- SMS 발송 이력 (신규) -->
+          <div class="card border-0 shadow-sm mb-3">
+            <div class="card-header bg-white border-bottom-0 pt-3 pb-0">
+              <h6 class="fw-bold m-0 text-secondary"><i class="bi bi-telephone-fill me-2"></i>SMS 발송 이력 (최근 5건)</h6>
+            </div>
+            <div class="card-body pt-2 pb-2">
+              ${smsHistoryHTML}
             </div>
           </div>
         </div>
