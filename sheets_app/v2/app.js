@@ -3634,7 +3634,7 @@ window.sendAlimtalk = async function () {
 
   const inputs = document.querySelectorAll('.alimtalk-content-input');
   const recordsToSave = [];
-  const smsSpreadsheetId = '1hlklodChPmHcnD2_pEp6po6SjQaDhtBs9CtvntAvaP0';
+  const smsSpreadsheetId = '1QmNIHDT76K1owChT1PinOEEn6WqgF7uhb5vQcv9Bm3Q';
 
   inputs.forEach((inputEl, i) => {
     const text = inputEl.value.trim();
