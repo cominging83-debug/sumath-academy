@@ -64,7 +64,8 @@
       "Bash(node --check sheets_app/v2/app.js)",
       "Bash(node --check sheets_app/v2/api.js)",
       "Bash(node --check sheets_app/v2/config.js)",
-      "Bash(grep -oE \"window\\\\.[a-zA-Z_]+ = |function [a-zA-Z_]+\\\\\\(|const [A-Z_]{4,} =\")"
+      "Bash(grep -oE \"window\\\\.[a-zA-Z_]+ = |function [a-zA-Z_]+\\\\\\(|const [A-Z_]{4,} =\")",
+      "Bash(git commit *)"
     ],
     "ask": [
       "Bash(vercel --prod*)",
