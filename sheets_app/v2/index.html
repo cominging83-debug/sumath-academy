@@ -400,6 +400,12 @@
         </div>
       </div>
 
+      <div class="px-3 pt-2 pb-1" style="position: relative;">
+        <input type="text" id="globalStudentSearch" class="form-control form-control-sm" placeholder="🔍 학생 이름으로 바로 찾기" autocomplete="off"
+          oninput="window.handleGlobalStudentSearch(this.value)" onfocus="window.handleGlobalStudentSearch(this.value)">
+        <div id="globalStudentSearchResults" class="list-group shadow" style="position:absolute; left:12px; right:12px; top:100%; z-index:2000; max-height:280px; overflow-y:auto; display:none;"></div>
+      </div>
+
       <div class="sidebar-menu">
         <div class="sidebar-divider">수업 관리</div>
         <button class="menu-btn active" id="menu-DASHBOARD" onclick="switchView('DASHBOARD')">
@@ -425,6 +431,9 @@
         <button class="menu-btn" id="menu-COUNSEL_REQ" onclick="switchView('COUNSEL_REQ')">
           <i class="bi bi-calendar-check"></i> 상담 요청
         </button>
+        <button class="menu-btn" id="menu-SMS" onclick="switchView('SMS')">
+          <i class="bi bi-telephone-fill"></i> SMS 발송 이력
+        </button>
 
         <div class="sidebar-divider">조회 및 분석</div>
         <button class="menu-btn" id="menu-HISTORY" onclick="switchView('HISTORY')">
@@ -443,6 +452,10 @@
         </button>
       </div>
       <div class="sidebar-footer border-top border-secondary border-opacity-25 pt-3 mx-3 pb-3">
+        <button class="btn btn-sm btn-primary w-100 mb-2 fw-bold" id="btn-sidebar-new-student" style="display:none;"
+          onclick="openNewStudentModal()">
+          <i class="bi bi-person-plus-fill"></i> 신규 학생 등록
+        </button>
         <button class="btn btn-sm btn-outline-warning w-100 mb-2 fw-bold" id="btn-global-zoom"
           onclick="toggleGlobalZoom()">
           <i class="bi bi-zoom-in"></i> 화면 크게 보기

@@ -29,12 +29,19 @@ const CONFIG = {
         TATT: '강사근태',      // 강사 출퇴근 기록
         SCORE: '성적DB',
         NOTICE: '공지DB',
-        MAKEUP: '보강일정DB'    // 보강 일정
+        MAKEUP: '보강일정DB',   // 보강 일정
+        MONTHLY_EVAL_DB: '월말평가DB' // 월말평가 결과 누적 (메인 스프레드시트 내 신규 시트)
     },
 
     // 6. SMS 발송 시트 (V2 전용)
     SMS_SHEET: {
         SPREADSHEET_ID: '1QmNIHDT76K1owChT1PinOEEn6WqgF7uhb5vQcv9Bm3Q',
         SHEET_NAME: 'SMS발송'
+    },
+
+    // 7. 월말평가 원본 시트 (원장님이 직접 채점하는 별도 워크북)
+    MONTHLY_EVAL_SHEET: {
+        SPREADSHEET_ID: '1XOnYT08eKlH6Lh1irAQw3pgTDGeLAA8mqq_uPfGpJUA'
+        // 탭 이름은 'YYYY.MM' 형식으로 매달 바뀜 (예: '2026.06') - 앱에서 자동 탐색
     }
 };

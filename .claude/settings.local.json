@@ -21,7 +21,6 @@
       "Bash(xargs echo \"전체 함수 개수:\")",
       "Bash(awk '{print $9, \"\\(\" $5 \"\\)\"}')",
       "Bash(npm list *)",
-      "Bash(vercel --prod)",
       "Bash(node -c v2/app.js)",
       "Bash(python3)",
       "Bash(node -c \"C:\\\\Users\\\\comin\\\\Desktop\\\\학원관리프로그램\\\\sheets_app\\\\v2\\\\app.js\")",
@@ -32,7 +31,6 @@
       "Bash(git commit -m 'Claude Code 설정 업데이트 *)",
       "Bash(awk '/^window.loadDashboardView/,/^window\\\\.[a-zA-Z]/ {print NR\": \"$0}' app.js)",
       "Bash(git commit -m 'Phase 4: 대시보드 KPI 카드 추가 \\(오늘 수업, 출석률, 신규 등록, 미완료 보강\\) *)",
-      "Bash(git push *)",
       "Bash(git commit -m '🎨 대시보드 UI 대폭 개선 - 히어로 섹션 추가 *)",
       "Bash(python -m http.server 8000 --directory sheets_app)",
       "Bash(git commit -m '🚨 대시보드 위험군 알람 + 강사별 통계 추가 *)",
@@ -46,7 +44,32 @@
       "Bash(git commit -m 'fix: 위험군 알람에서 퇴원생 제외 *)",
       "Bash(git commit -m 'fix: 학생 상태 변경 시 배열 인덱싱 오류 \\(한 칸 밀림\\) *)",
       "Bash(git commit -m 'fix: 상담 요청 저장 시 appendSheetData 함수 없음 *)",
-      "Bash(git commit -m 'fix: 위험군 학생 클릭 시 상세보기 안 됨 *)"
+      "Bash(git commit -m 'fix: 위험군 학생 클릭 시 상세보기 안 됨 *)",
+      "Bash(grep -n \"^[0-9]*:}$\")",
+      "Bash(grep -n \"let html = \\\\`\\\\|const html = \\\\`\\\\|isManager\" \"C:\\\\Users\\\\comin\\\\Desktop\\\\학원관리프로그램\\\\sheets_app\\\\v2\\\\app.js\")",
+      "Bash(awk 'NR==211,NR==875' \"C:\\\\Users\\\\comin\\\\Desktop\\\\학원관리프로그램\\\\sheets_app\\\\v2\\\\app.js\")",
+      "Bash(node -c api.js)",
+      "Bash(node -c config.js)",
+      "Bash(vercel --version)",
+      "Bash(vercel whoami *)",
+      "Bash(awk 'NR==212,NR==650' \"C:\\\\Users\\\\comin\\\\Desktop\\\\학원관리프로그램\\\\sheets_app\\\\v2\\\\app.js\")",
+      "Skill(update-config)",
+      "Skill(update-config:*)",
+      "Bash(node -e \"JSON.parse\\(require\\('fs'\\).readFileSync\\('.claude/settings.local.json','utf8'\\)\\); console.log\\('JSON 유효'\\)\")",
+      "Bash(markitdown \"C:\\\\Users\\\\comin\\\\Documents\\\\카카오톡 받은 파일\\\\풀이노트 페이지.xlsx\")",
+      "Bash(python3 -c ' *)",
+      "Bash(python3 -c \"import openpyxl\")",
+      "Bash(pip show *)",
+      "Bash(pip install *)",
+      "Bash(node --check sheets_app/v2/app.js)",
+      "Bash(node --check sheets_app/v2/api.js)",
+      "Bash(node --check sheets_app/v2/config.js)",
+      "Bash(grep -oE \"window\\\\.[a-zA-Z_]+ = |function [a-zA-Z_]+\\\\\\(|const [A-Z_]{4,} =\")"
+    ],
+    "ask": [
+      "Bash(vercel --prod*)",
+      "Bash(vercel deploy*)",
+      "Bash(git push*)"
     ]
   }
 }

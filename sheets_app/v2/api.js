@@ -184,7 +184,7 @@ async function loadInitialData() {
     if (!appCache.user) appCache.user = { email: '', name: '', role: '강사' };
     try {
         // 💡 [수정] 맨 끝에 issues 와 '이슈DB' 로드 명령을 추가했습니다!
-        const [teachers, students, schedules, attendance, counsels, books, tatt, classes, scores, templatesRaw, notices, makeups, issues, smsLogs] = await Promise.all([
+        const [teachers, students, schedules, attendance, counsels, books, tatt, classes, scores, templatesRaw, notices, makeups, issues, smsLogs, monthlyEvalDb] = await Promise.all([
             getOptionalSheetData(CONFIG.SHEETS.TEACHER, 'A2:L'),
             getOptionalSheetData(CONFIG.SHEETS.STUDENT, 'A2:P'),
             getOptionalSheetData(CONFIG.SHEETS.SCHEDULE, 'A2:N'),
@@ -198,11 +198,12 @@ async function loadInitialData() {
             getOptionalSheetData(CONFIG.SHEETS.NOTICE, 'A2:D'),
             getOptionalSheetData('보강일정DB', 'A2:I'),
             getOptionalSheetData('이슈DB', 'A2:F'),
-            getSmsLogData() // SMS 발송 로그 (별도 Sheet)
+            getSmsLogData(), // SMS 발송 로그 (별도 Sheet)
+            getOptionalSheetData(CONFIG.SHEETS.MONTHLY_EVAL_DB, 'A2:Q') // 월말평가 결과 누적
         ]);
 
         // 💡 [수정] 가져온 issues 데이터를 메모리(appCache)에 등록합니다.
-        appCache.raw = { teachers, students, schedules, attendance, counsels, books, tatt, classes, scores, notices, '보강일정DB': makeups, '이슈DB': issues, smsLogs };
+        appCache.raw = { teachers, students, schedules, attendance, counsels, books, tatt, classes, scores, notices, '보강일정DB': makeups, '이슈DB': issues, smsLogs, monthlyEvalDb };
 
         globalSourceStudents = students.map(s => s[1]).filter(name => name);
         appCache.templates = templatesRaw.map(r => ({ title: r[0], content: r[1] })).filter(t => t.title);
@@ -495,5 +496,61 @@ async function loadSmsLogData() {
     } catch (e) {
         console.warn('SMS 로그 로드 실패', e);
         appCache.raw.smsLogs = [];
+    }
+}
+
+// =================================================================
+// 📊 월말평가 연동 (별도 워크북 → 메인 스프레드시트 월말평가DB)
+// =================================================================
+const MONTHLY_EVAL_DB_HEADERS = ['타임스탬프', '연월', '학생ID', '학생명', '학년', '학기', '담당강사', '선행범위', '현행점수', '선행점수', '현행링크', '선행링크', '풀이노트제출여부', '풀이노트점수', '클리닉대상', '풀이노트평가', '특이사항'];
+
+// 월말평가DB 시트가 없으면 생성 + 헤더 기록
+async function ensureMonthlyEvalDbSheet() {
+    const meta = await callSheetsAPI('GET', '');
+    const exists = (meta.sheets || []).some(s => s.properties.title === CONFIG.SHEETS.MONTHLY_EVAL_DB);
+    if (!exists) {
+        await callSheetsAPI('POST', ':batchUpdate', {
+            requests: [{ addSheet: { properties: { title: CONFIG.SHEETS.MONTHLY_EVAL_DB } } }]
+        });
+        const lastCol = String.fromCharCode('A'.charCodeAt(0) + MONTHLY_EVAL_DB_HEADERS.length - 1);
+        await callSheetsAPI('PUT', `/values/${encodeURIComponent(CONFIG.SHEETS.MONTHLY_EVAL_DB + '!A1:' + lastCol + '1')}?valueInputOption=USER_ENTERED`, { values: [MONTHLY_EVAL_DB_HEADERS] });
+        return true;
+    }
+    return false;
+}
+
+// 월말평가 원본 워크북(별도 스프레드시트)의 시트 탭 목록 조회 → 'YYYY.MM' 형식 탭만 필터
+async function getMonthlyEvalSheetList() {
+    const customSpreadsheetId = CONFIG.MONTHLY_EVAL_SHEET.SPREADSHEET_ID;
+    const meta = await callSheetsAPI('GET', '', null, customSpreadsheetId);
+    return (meta.sheets || [])
+        .map(s => s.properties.title)
+        .filter(title => /^\d{4}\.\d{2}$/.test(title))
+        .sort(); // 문자열 정렬로도 YYYY.MM은 시간순 정렬됨
+}
+
+// 월말평가 원본 탭의 학생 데이터 원본 로우 조회 (4행부터 시작, A~W열)
+async function getMonthlyEvalRawData(sheetName) {
+    const customSpreadsheetId = CONFIG.MONTHLY_EVAL_SHEET.SPREADSHEET_ID;
+    const range = `${sheetName}!A4:W300`;
+    const result = await callSheetsAPI('GET', `/values/${encodeURIComponent(range)}`, null, customSpreadsheetId);
+    return result.values || [];
+}
+
+// 파싱된 월말평가 결과 행들을 월말평가DB(메인 스프레드시트)에 append
+async function appendMonthlyEvalRows(rows) {
+    if (!rows || rows.length === 0) return;
+    const body = { values: rows };
+    await callSheetsAPI('POST', `/values/${encodeURIComponent(CONFIG.SHEETS.MONTHLY_EVAL_DB)}:append?valueInputOption=USER_ENTERED`, body);
+}
+
+// 월말평가DB 데이터를 앱 캐시에 로드 (대시보드 위젯용)
+async function loadMonthlyEvalDbData() {
+    try {
+        const data = await getOptionalSheetData(CONFIG.SHEETS.MONTHLY_EVAL_DB, 'A2:Q');
+        appCache.raw.monthlyEvalDb = data;
+    } catch (e) {
+        console.warn('월말평가DB 로드 실패', e);
+        appCache.raw.monthlyEvalDb = [];
     }
 }

@@ -15,6 +15,165 @@ let globalSourceStudents = []; // 원천DB 학생 명단 (수강 등록용)
 let allEvents = []; // 전체 수업 일정 명단 (출결 모달 매크로용)
 let currentEventForModal = null; // 현재 모달이 열린 수업 정보
 
+// =================================================================
+// 📖 풀이노트 숙제 범위 기준표 (원장님 제공 엑셀에서 추출, 감마플러스/감마2는 범위 데이터 없음)
+// ⚠️ 원본 데이터 이상치 그대로 반영: 6_1단원3 알파2 "90-73"(순서역전 추정), 5_1단원5 베타 "115123130132"(쉼표누락 추정), 6_2단원2 베타 "39,7,54-56" — 확인 후 필요시 수정 요청 주세요.
+// =================================================================
+window.HOMEWORK_PAGE_REFERENCE = {
+  "알파2": [
+    { semester: "4_1", unit: 1, range: "14-15,26-27,36-38" },
+    { semester: "4_1", unit: 2, range: "50-51,60-61,70-72" },
+    { semester: "4_1", unit: 3, range: "82-83,94-95,104-106" },
+    { semester: "4_1", unit: 4, range: "116-117,124-125,134-136" },
+    { semester: "4_1", unit: 5, range: "144-145,150-151,162-164" },
+    { semester: "4_1", unit: 6, range: "174-175, 182-183,192-194" },
+    { semester: "4_2", unit: 1, range: "12-13,24-25,34-36" },
+    { semester: "4_2", unit: 2, range: "48-49,54-55,64-66" },
+    { semester: "4_2", unit: 3, range: "80-81,92-93,102-104" },
+    { semester: "4_2", unit: 4, range: "114-115,126-127,138-140" },
+    { semester: "4_2", unit: 5, range: "148-149,154-157,166-168" },
+    { semester: "4_2", unit: 6, range: "182-183,192-194" },
+    { semester: "5_1", unit: 1, range: "14-19,26-28" },
+    { semester: "5_1", unit: 2, range: "36-39,46-49,56-58" },
+    { semester: "5_1", unit: 3, range: "68-71,78-80" },
+    { semester: "5_1", unit: 4, range: "88-91,98-101,108-110" },
+    { semester: "5_1", unit: 5, range: "120-123,130-133,140-142" },
+    { semester: "5_1", unit: 6, range: "154-157,166-169,176-178" },
+    { semester: "5_2", unit: 1, range: "12-15,20-23,30-32" },
+    { semester: "5_2", unit: 2, range: "40-43,50-53,60-62" },
+    { semester: "5_2", unit: 3, range: "70-73,82-87,94-96" },
+    { semester: "5_2", unit: 4, range: "104-107,112-115,122-124" },
+    { semester: "5_2", unit: 5, range: "132-135,140-143,150-152" },
+    { semester: "5_2", unit: 6, range: "162-165,170-173,180-182" },
+    { semester: "6_1", unit: 1, range: "16-21,42-45" },
+    { semester: "6_1", unit: 2, range: "50-53,60-62" },
+    { semester: "6_1", unit: 3, range: "90-73,80-83,90-92" },
+    { semester: "6_1", unit: 4, range: "102-105,110-113,120-122" },
+    { semester: "6_1", unit: 5, range: "132-135,144-147,154-156" },
+    { semester: "6_1", unit: 6, range: "168-173,180-182" },
+    { semester: "6_2", unit: 1, range: "12-15,22-25,32-34" },
+    { semester: "6_2", unit: 2, range: "44-47,54-57,64-66" },
+    { semester: "6_2", unit: 3, range: "74-77,84-87,94-96" },
+    { semester: "6_2", unit: 4, range: "104-107,112-115,122-124" },
+    { semester: "6_2", unit: 5, range: "132-135,142-145,152-154" },
+    { semester: "6_2", unit: 6, range: "162-163,170-173,180-182" },
+  ],
+  "베타": [
+    { semester: "4_1", unit: 1, range: "13,23,32-34" },
+    { semester: "4_1", unit: 2, range: "45,55,64-66" },
+    { semester: "4_1", unit: 3, range: "75,83,92-94" },
+    { semester: "4_1", unit: 4, range: "109,118-120" },
+    { semester: "4_1", unit: 5, range: "135,142-144" },
+    { semester: "4_1", unit: 6, range: "155,165,172-174" },
+    { semester: "4_2", unit: 1, range: "11,21,30-32" },
+    { semester: "4_2", unit: 2, range: "43,49,58-60" },
+    { semester: "4_2", unit: 3, range: "73,83,92-94" },
+    { semester: "4_2", unit: 4, range: "105,115,124-126" },
+    { semester: "4_2", unit: 5, range: "141,150-152" },
+    { semester: "4_2", unit: 6, range: "165,172-174" },
+    { semester: "5_1", unit: 1, range: "9,17,24-26" },
+    { semester: "5_1", unit: 2, range: "37,47,54-56" },
+    { semester: "5_1", unit: 3, range: "67,74-76" },
+    { semester: "5_1", unit: 4, range: "85,95,102-104" },
+    { semester: "5_1", unit: 5, range: "115123130132" },
+    { semester: "5_1", unit: 6, range: "145,157,164-166" },
+    { semester: "5_2", unit: 1, range: "13,19,26-28" },
+    { semester: "5_2", unit: 2, range: "39,47,54-57" },
+    { semester: "5_2", unit: 3, range: "65,75,82-84" },
+    { semester: "5_2", unit: 4, range: "93,101,108-110" },
+    { semester: "5_2", unit: 5, range: "121,129,136-138" },
+    { semester: "5_2", unit: 6, range: "149,155,160-162" },
+    { semester: "6_1", unit: 1, range: "15,22-24" },
+    { semester: "6_1", unit: 2, range: "37,43,50-52" },
+    { semester: "6_1", unit: 3, range: "63,71,78-80" },
+    { semester: "6_1", unit: 4, range: "95,103,110-112" },
+    { semester: "6_1", unit: 5, range: "123,133,140-142" },
+    { semester: "6_1", unit: 6, range: "153,161,168-170" },
+    { semester: "6_2", unit: 1, range: "11,19,26-28" },
+    { semester: "6_2", unit: 2, range: "39,7,54-56" },
+    { semester: "6_2", unit: 3, range: "71,78-80" },
+    { semester: "6_2", unit: 4, range: "91,101,106-108" },
+    { semester: "6_2", unit: 5, range: "119,127,134-136" },
+    { semester: "6_2", unit: 6, range: "145,153,160-162" },
+  ],
+  "감마1": [
+    { semester: "4_1", unit: 1, range: "18-21,30-31" },
+    { semester: "4_1", unit: 2, range: "46-49,58-59" },
+    { semester: "4_1", unit: 3, range: "72-75,84-85" },
+    { semester: "4_1", unit: 4, range: "98-101,110-111" },
+    { semester: "4_1", unit: 5, range: "122-125,134-135" },
+    { semester: "4_1", unit: 6, range: "150-153,162-163" },
+    { semester: "4_2", unit: 1, range: "18-21,30-31" },
+    { semester: "4_2", unit: 2, range: "42-45,54-55" },
+    { semester: "4_2", unit: 3, range: "72-75,84-85" },
+    { semester: "4_2", unit: 4, range: "100-103,112-113" },
+    { semester: "4_2", unit: 5, range: "126-129,138-139" },
+    { semester: "4_2", unit: 6, range: "152-153,162-163" },
+    { semester: "5_1", unit: 1, range: "12-15,24-25" },
+    { semester: "5_1", unit: 2, range: "36-39,48-49" },
+    { semester: "5_1", unit: 3, range: "58-61,70-71" },
+    { semester: "5_1", unit: 4, range: "79-81,85-87,96-97" },
+    { semester: "5_1", unit: 5, range: "105-107,111-113,122-123" },
+    { semester: "5_1", unit: 6, range: "132-133,138-141,150-151" },
+    { semester: "5_2", unit: 1, range: "11-13,17-19,28-29" },
+    { semester: "5_2", unit: 2, range: "37-39,54-55" },
+    { semester: "5_2", unit: 3, range: "66-69,78-79" },
+    { semester: "5_2", unit: 4, range: "87-89,93-95,104-105" },
+    { semester: "5_2", unit: 5, range: "116-119,128-129" },
+    { semester: "5_2", unit: 6, range: "139-141,150-151" },
+    { semester: "6_1", unit: 1, range: "13-17,26-27" },
+    { semester: "6_1", unit: 2, range: "38-41,50-51" },
+    { semester: "6_1", unit: 3, range: "62-65,74-75" },
+    { semester: "6_1", unit: 4, range: "86-89,98-99" },
+    { semester: "6_1", unit: 5, range: "108-109,115-117,126-127" },
+    { semester: "6_1", unit: 6, range: "138-141,150-151" },
+    { semester: "6_2", unit: 1, range: "14-17,26-27" },
+    { semester: "6_2", unit: 2, range: "35-37,41-43,52-53" },
+    { semester: "6_2", unit: 3, range: "64-67,76-77" },
+    { semester: "6_2", unit: 4, range: "85-87,91-93,102-103" },
+    { semester: "6_2", unit: 5, range: "111-113,117-119,128-129" },
+    { semester: "6_2", unit: 6, range: "139-141,150-151" },
+  ],
+};
+
+// "14-15,26-27,36-38" 같은 문자열을 페이지 번호 Set으로 변환
+window.parsePageRangeToSet_ = function (text) {
+  const set = new Set();
+  String(text || '').split(',').forEach(part => {
+    part = part.trim();
+    if (!part) return;
+    const m = part.match(/^(\d+)\s*-\s*(\d+)$/);
+    if (m) {
+      let a = parseInt(m[1], 10), b = parseInt(m[2], 10);
+      if (a > b) { const t = a; a = b; b = t; }
+      for (let p = a; p <= b; p++) set.add(p);
+    } else {
+      const n = parseInt(part, 10);
+      if (!isNaN(n)) set.add(n);
+    }
+  });
+  return set;
+};
+
+// 입력된 숙제 범위가 기준표에 있는 정의된 범위와 정확히 일치하는지 확인
+// 반환: null(기준표 없는 교재라 체크 불가) | {valid: true/false, matched}
+window.checkHomeworkRangeAgainstReference = function (bookName, rangeText) {
+  const name = String(bookName || '').trim();
+  const ref = window.HOMEWORK_PAGE_REFERENCE && window.HOMEWORK_PAGE_REFERENCE[name];
+  if (!ref || ref.length === 0) return null;
+
+  const inputSet = window.parsePageRangeToSet_(rangeText);
+  if (inputSet.size === 0) return null;
+
+  for (const entry of ref) {
+    const refSet = window.parsePageRangeToSet_(entry.range);
+    if (refSet.size === inputSet.size && [...refSet].every(p => inputSet.has(p))) {
+      return { valid: true, matched: entry };
+    }
+  }
+  return { valid: false, matched: null };
+};
+
 // ── 헬퍼: 시간 문자열 ↔ 분(minutes) ──
 function toMins(t) {
   if (!t || !t.includes(':')) return null;
@@ -471,113 +630,7 @@ window.renderOperationalDashboardView = function (targetId) {
         </div>
       </div>
 
-      ${isManager ? `
-      <!-- 📊 Phase 4 KPI 히어로 섹션 (원장용) -->
-      <div style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); border-radius: 16px; padding: 2rem; margin-top: 1rem; margin-bottom: 2rem; box-shadow: 0 10px 40px rgba(0,0,0,0.15);">
-        <div class="mb-3">
-          <h5 class="text-white fw-bold m-0"><i class="bi bi-star-fill text-warning me-2"></i>오늘의 핵심 지표</h5>
-        </div>
-
-        <div class="row g-3">
-          <!-- KPI 1 -->
-          <div class="col-md-6 col-lg-3">
-            <div class="card border-0 h-100" style="border-radius: 12px; background: linear-gradient(135deg, #ffffff, #e0f2fe); box-shadow: 0 4px 20px rgba(2, 132, 199, 0.15);">
-              <div class="card-body p-4">
-                <div class="d-flex justify-content-between align-items-start">
-                  <div>
-                    <p class="text-muted small fw-bold mb-2">📊 오늘 수업</p>
-                    <h2 class="fw-bold m-0 text-info" style="font-size: 2.5rem;">${todayClasses}</h2>
-                    <small class="text-muted">건수</small>
-                  </div>
-                  <i class="bi bi-calendar-event text-info" style="font-size: 2.5rem; opacity: 0.2;"></i>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- KPI 2 -->
-          <div class="col-md-6 col-lg-3">
-            <div class="card border-0 h-100" style="border-radius: 12px; background: linear-gradient(135deg, #ffffff, #dcfce7); box-shadow: 0 4px 20px rgba(22, 163, 74, 0.15);">
-              <div class="card-body p-4">
-                <div class="d-flex justify-content-between align-items-start">
-                  <div>
-                    <p class="text-muted small fw-bold mb-2">📈 이번달 출석률</p>
-                    <h2 class="fw-bold m-0" style="color: #16a34a; font-size: 2.5rem;">${attendanceRate}<span style="font-size: 1.2rem;">%</span></h2>
-                    <small class="text-muted">${thisMonthPresent}/${thisMonthTotal}명</small>
-                  </div>
-                  <i class="bi bi-graph-up text-success" style="font-size: 2.5rem; opacity: 0.2;"></i>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- KPI 3 -->
-          <div class="col-md-6 col-lg-3">
-            <div class="card border-0 h-100" style="border-radius: 12px; background: linear-gradient(135deg, #ffffff, #fef3c7); box-shadow: 0 4px 20px rgba(217, 119, 6, 0.15);">
-              <div class="card-body p-4">
-                <div class="d-flex justify-content-between align-items-start">
-                  <div>
-                    <p class="text-muted small fw-bold mb-2">✨ 신규 등록</p>
-                    <h2 class="fw-bold m-0" style="color: #d97706; font-size: 2.5rem;">${newStudents}</h2>
-                    <small class="text-muted">명 (이번달)</small>
-                  </div>
-                  <i class="bi bi-person-plus text-warning" style="font-size: 2.5rem; opacity: 0.2;"></i>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- KPI 4 -->
-          <div class="col-md-6 col-lg-3">
-            <div class="card border-0 h-100" style="border-radius: 12px; background: linear-gradient(135deg, #ffffff, #fee2e2); box-shadow: 0 4px 20px rgba(220, 38, 38, 0.15);">
-              <div class="card-body p-4">
-                <div class="d-flex justify-content-between align-items-start">
-                  <div>
-                    <p class="text-muted small fw-bold mb-2">⏳ 미완료 보강</p>
-                    <h2 class="fw-bold m-0 text-danger" style="font-size: 2.5rem;">${incompleteMakeups}</h2>
-                    <small class="text-muted">건 (진행중)</small>
-                  </div>
-                  <i class="bi bi-hourglass-split text-danger" style="font-size: 2.5rem; opacity: 0.2;"></i>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-      ` : ''}
     </div>
-
-    <!-- 🚨 주의 필요한 학생 (위험군 알람) -->
-    ${isManager && atRiskStudents.length > 0 ? `
-    <div style="background: linear-gradient(135deg, #7f1d1d 0%, #5f0f0f 100%); border-radius: 16px; padding: 2rem; margin-bottom: 2rem; box-shadow: 0 10px 40px rgba(220, 38, 38, 0.2);">
-      <div class="d-flex justify-content-between align-items-start mb-2">
-        <h5 class="text-white fw-bold m-0"><i class="bi bi-exclamation-triangle-fill text-danger me-2"></i>🚨 주의 필요한 학생 (${atRiskStudents.length}명)</h5>
-        <button class="btn btn-sm btn-light btn-outline-light" data-bs-toggle="modal" data-bs-target="#atRiskCriteriaModal" style="border-radius: 50%; width: 32px; height: 32px; padding: 0; display: flex; align-items: center; justify-content: center;">
-          <i class="bi bi-info-circle-fill"></i>
-        </button>
-      </div>
-      <small class="text-light d-block mb-3">
-        <strong>기준:</strong> 지난 30일 내 결석 3회 이상 또는 숙제 미제출 3회 이상
-      </small>
-
-      <div class="mt-3">
-        ${atRiskStudents.map((s, idx) => `
-          <div class="alert alert-danger border-0 mb-2 p-3" style="background: rgba(255,255,255,0.1); border-left: 4px solid #ef4444; cursor:pointer;" role="alert" onclick="openStudentProfileModal('${s.id}', '${s.name}')">
-            <div class="d-flex justify-content-between align-items-center">
-              <div>
-                <strong class="text-white">${idx + 1}. ${s.name}</strong>
-                <div class="small text-light mt-1">
-                  ${s.absences >= 3 ? `<span class="badge bg-danger me-1">결석 ${s.absences}회</span>` : ''}
-                  ${s.noHomework >= 3 ? `<span class="badge bg-danger">숙제 미제출 ${s.noHomework}회</span>` : ''}
-                </div>
-              </div>
-              <i class="bi bi-chevron-right text-warning"></i>
-            </div>
-          </div>
-        `).join('')}
-      </div>
-    </div>
-    ` : ''}
 
     <!-- 🎯 오늘의 핵심 업무 섹션 -->
     <div style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); border-radius: 16px; padding: 2rem; margin-bottom: 2rem; box-shadow: 0 10px 40px rgba(0,0,0,0.15);">
@@ -630,77 +683,6 @@ window.renderOperationalDashboardView = function (targetId) {
         ` : ''}
       </div>
     </div>
-
-    <!-- 👨‍🏫 강사별 수업 현황 & 선생님별 학생 현황 (원장용) -->
-    ${isManager ? `
-    <div class="row g-4 mt-2 mb-4">
-      <div class="col-lg-6">
-        <div class="card border-0 shadow-sm h-100" style="border-radius: 16px;">
-          <div class="card-header bg-primary text-white fw-bold border-0 p-4" style="border-radius: 16px 16px 0 0;">
-            <i class="bi bi-person-badge-fill me-2"></i>강사별 수업 현황
-          </div>
-          <div class="card-body p-4">
-            <div class="table-responsive">
-              <table class="table table-hover mb-0">
-                <thead>
-                  <tr class="text-muted small fw-bold">
-                    <th>강사명</th>
-                    <th class="text-center">수업수</th>
-                    <th class="text-center">담당학생</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  ${teacherStats.map(t => `
-                    <tr style="cursor:pointer; border-bottom: 1px solid #e5e7eb;">
-                      <td class="fw-bold text-dark">${t.name}</td>
-                      <td class="text-center"><span class="badge bg-info text-dark">${t.classes}</span></td>
-                      <td class="text-center"><span class="badge bg-success">${t.students}</span></td>
-                    </tr>
-                  `).join('')}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="col-lg-6">
-        <div class="card border-0 shadow-sm h-100" style="border-radius: 16px;">
-          <div class="card-header bg-success text-white fw-bold border-0 p-4" style="border-radius: 16px 16px 0 0;">
-            <i class="bi bi-people-fill me-2"></i>선생님별 담당 학생 현황
-          </div>
-          <div class="card-body p-4">
-            <div class="table-responsive">
-              <table class="table table-hover mb-0">
-                <thead>
-                  <tr class="text-muted small fw-bold">
-                    <th>선생님</th>
-                    <th class="text-center">담당학생 수</th>
-                    <th class="text-center">상태</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  ${Array.from(teacherStudentMap.entries()).map(([teacher, students]) => {
-                    const studentCount = students.size;
-                    let statusBadge = 'bg-success';
-                    if (studentCount === 0) statusBadge = 'bg-secondary';
-                    else if (studentCount > 10) statusBadge = 'bg-warning text-dark';
-                    return `
-                      <tr style="cursor:pointer; border-bottom: 1px solid #e5e7eb;">
-                        <td class="fw-bold text-dark">${teacher}</td>
-                        <td class="text-center"><span class="badge bg-primary text-dark">${studentCount}</span></td>
-                        <td class="text-center"><span class="badge ${statusBadge}">${studentCount > 10 ? '많음' : (studentCount === 0 ? '없음' : '정상')}</span></td>
-                      </tr>
-                    `;
-                  }).join('')}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-    ` : ''}
 
     <!-- 📚 진도율 TOP 5 섹션 (원장용) -->
     ${isManager ? `
@@ -812,10 +794,12 @@ window.renderOperationalDashboardView = function (targetId) {
   if (window.refreshDashboardTodos) window.refreshDashboardTodos();
   if (typeof loadTeacherDashboardWidgets === 'function') loadTeacherDashboardWidgets();
 
-  // SMS 발송 현황 위젯 추가
+  // SMS 발송 현황 + 월말평가 풀이노트 위젯 추가
   const smsWidget = window.renderSmsSummary ? window.renderSmsSummary() : '';
-  if (smsWidget && document.getElementById('dashboard-bottom-widgets')) {
-    document.getElementById('dashboard-bottom-widgets').innerHTML = smsWidget;
+  const monthlyEvalWidget = window.renderMonthlyEvalWidget ? window.renderMonthlyEvalWidget() : '';
+  const bottomWidgetsEl = document.getElementById('dashboard-bottom-widgets');
+  if (bottomWidgetsEl) {
+    bottomWidgetsEl.innerHTML = smsWidget + monthlyEvalWidget;
   }
 
   // 기준 설명 모달 추가
@@ -882,25 +866,66 @@ window.renderOperationalDashboardView = function (targetId) {
 // =================================================================
 window.renderManagementDashboardView = function (targetId) {
   const students = (appCache.raw.students || []).slice(1);
+  const schedules = (appCache.raw && appCache.raw.schedules) || [];
   const today = new Date();
   const todayStr = today.toISOString().substring(0, 10);
+  const todayKor = ['일', '월', '화', '수', '목', '금', '토'][today.getDay()];
   const thisMonthStart = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().split('T')[0];
 
-  // 상태별 카운트
+  // 재원 현황
   const activeCount = students.filter(s => s[7] === '재원').length;
   const pausedCount = students.filter(s => s[7] === '휴원').length;
-
-  // 이번달 신입 / 퇴원 (I열 날짜 기준 - 등록일과 상태변경일이 같은 열이라 완전히 정확하진 않을 수 있음)
   const newThisMonth = students.filter(s => s[7] === '재원' && s[8] && s[8] >= thisMonthStart).length;
   const withdrawnThisMonth = students.filter(s => s[7] === '퇴원' && s[8] && s[8] >= thisMonthStart).length;
 
+  // 오늘의 핵심 지표
+  const todayClasses = schedules.filter(s => s[4] === todayKor && s[6] && s[7]).length;
+  const thisMonthAttendance = (appCache.raw.attendance || []).slice(1).filter(a => a[3] && a[3] >= thisMonthStart && a[3] <= todayStr);
+  const thisMonthPresent = thisMonthAttendance.filter(a => a[5] === '출석').length;
+  const thisMonthTotal = thisMonthAttendance.filter(a => ['출석', '결석', '보강'].includes(a[5])).length;
+  const attendanceRate = thisMonthTotal > 0 ? Math.round((thisMonthPresent / thisMonthTotal) * 100) : 0;
+  const makeups = (appCache.raw['보강일정DB'] || []).slice(1);
+  const incompleteMakeups = makeups.filter(m => m[8] !== '완료').length;
+
+  // 주의 필요한 학생 (위험군)
+  const thirtyDaysAgo = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+  const attendanceData = (appCache.raw.attendance || []).slice(1);
+  const studentRiskMap = new Map();
+  attendanceData.forEach(record => {
+    const studentId = record[1], studentName = record[2], attendDate = record[3], status = record[5], homework = record[10];
+    if (!studentId || !attendDate || attendDate < thirtyDaysAgo) return;
+    if (!studentRiskMap.has(studentId)) {
+      const foundStudent = window.findStudentInfo(studentId, studentName);
+      const studentStatus = foundStudent ? foundStudent[7] : '재원';
+      studentRiskMap.set(studentId, { id: studentId, name: studentName, absences: 0, noHomework: 0, studentStatus });
+    }
+    const entry = studentRiskMap.get(studentId);
+    if (status === '결석') entry.absences++;
+    if (!homework || homework.trim() === '') entry.noHomework++;
+  });
+  const atRiskStudents = Array.from(studentRiskMap.values())
+    .filter(s => s.studentStatus === '재원' && (s.absences >= 3 || s.noHomework >= 3))
+    .sort((a, b) => (b.absences + b.noHomework) - (a.absences + a.noHomework))
+    .slice(0, 5);
+
+  // 강사별 수업현황 & 담당학생
+  const teacherClassMap = new Map();
+  const teacherStudentMap = new Map();
+  schedules.forEach(s => {
+    if (!s[9]) return;
+    const teacher = s[9].split('(')[0].trim();
+    if (!teacherClassMap.has(teacher)) { teacherClassMap.set(teacher, 0); teacherStudentMap.set(teacher, new Set()); }
+    teacherClassMap.set(teacher, teacherClassMap.get(teacher) + 1);
+    if (s[0]) teacherStudentMap.get(teacher).add(s[0].split('(')[0].trim());
+  });
+  const teacherStats = Array.from(teacherClassMap.entries()).map(([name, classCount]) => ({
+    name, classes: classCount, students: teacherStudentMap.get(name).size
+  })).sort((a, b) => b.classes - a.classes);
+
   // 월별 신입/퇴원 추이 (최근 6개월)
-  const monthLabels = [];
-  const monthNew = [];
-  const monthWithdrawn = [];
+  const monthLabels = [], monthNew = [], monthWithdrawn = [];
   for (let i = 5; i >= 0; i--) {
     const d = new Date(today.getFullYear(), today.getMonth() - i, 1);
-    const monthKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
     const monthEndDate = new Date(d.getFullYear(), d.getMonth() + 1, 0).toISOString().split('T')[0];
     const monthStartDate = d.toISOString().split('T')[0];
     monthLabels.push(`${d.getMonth() + 1}월`);
@@ -908,58 +933,128 @@ window.renderManagementDashboardView = function (targetId) {
     monthWithdrawn.push(students.filter(s => s[7] === '퇴원' && s[8] && s[8] >= monthStartDate && s[8] <= monthEndDate).length);
   }
 
+  const kpiTile = (icon, label, value, unit, color) => `
+    <div class="col-md-3 col-6">
+      <div class="p-3 bg-white h-100" style="border-radius: 14px; border: 1px solid #eef0f3; border-left: 3px solid ${color};">
+        <div class="d-flex align-items-center gap-2 mb-2">
+          <span style="font-size: 1rem;">${icon}</span>
+          <span class="text-muted small fw-semibold">${label}</span>
+        </div>
+        <div class="fw-bold" style="font-size: 1.65rem; color:#1f2937; letter-spacing:-0.02em;">${value}<span class="fs-6 text-muted fw-normal"> ${unit}</span></div>
+      </div>
+    </div>`;
+
+  const atRiskRows = atRiskStudents.length > 0 ? atRiskStudents.map((s, idx) => `
+    <div class="d-flex justify-content-between align-items-center px-4 py-3" style="border-bottom:1px solid #f1f5f9; cursor:pointer;" onclick="openStudentProfileModal('${s.id}', '${s.name}')">
+      <div class="d-flex align-items-center gap-3">
+        <span class="text-muted small" style="width:16px;">${idx + 1}</span>
+        <span class="fw-bold text-dark">${s.name}</span>
+      </div>
+      <div class="d-flex align-items-center gap-2">
+        ${s.absences >= 3 ? `<span class="badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25 fw-normal">결석 ${s.absences}회</span>` : ''}
+        ${s.noHomework >= 3 ? `<span class="badge bg-warning bg-opacity-10 text-warning border border-warning border-opacity-25 fw-normal">숙제미제출 ${s.noHomework}회</span>` : ''}
+        <i class="bi bi-chevron-right text-muted small"></i>
+      </div>
+    </div>`).join('') : `<div class="text-muted small text-center py-4">현재 주의가 필요한 학생이 없습니다 👍</div>`;
+
+  const teacherClassRows = teacherStats.map(t => `
+    <tr>
+      <td class="ps-4 fw-bold text-dark">${t.name}</td>
+      <td class="text-center">${t.classes}</td>
+      <td class="text-center pe-4">${t.students}</td>
+    </tr>`).join('') || `<tr><td colspan="3" class="text-center text-muted small py-3">데이터 없음</td></tr>`;
+
+  const teacherStudentRows = Array.from(teacherStudentMap.entries()).map(([teacher, set]) => {
+    const count = set.size;
+    const tag = count === 0 ? '없음' : (count > 10 ? '많음' : '정상');
+    const tagColor = count === 0 ? 'secondary' : (count > 10 ? 'warning' : 'success');
+    return `
+      <tr>
+        <td class="ps-4 fw-bold text-dark">${teacher}</td>
+        <td class="text-center">${count}</td>
+        <td class="text-center pe-4"><span class="badge bg-${tagColor} bg-opacity-10 text-${tagColor === 'warning' ? 'warning' : tagColor} border border-${tagColor}-subtle fw-normal">${tag}</span></td>
+      </tr>`;
+  }).join('') || `<tr><td colspan="3" class="text-center text-muted small py-3">데이터 없음</td></tr>`;
+
   const html = `
     <div class="pt-3 pb-2">
-      <div class="d-flex justify-content-between align-items-center mb-3">
-        <h4 class="fw-bold m-0 text-dark">📊 경영 대시보드</h4>
-        <div class="badge bg-white text-dark border shadow-sm px-3 py-2 fs-6"><i class="bi bi-calendar-check me-2 text-primary"></i>${todayStr}</div>
+      <div class="d-flex justify-content-between align-items-center mb-4">
+        <h4 class="fw-bold m-0 text-dark">경영 대시보드</h4>
+        <div class="text-muted small"><i class="bi bi-calendar-check me-1"></i>${todayStr}</div>
       </div>
 
+      <!-- 재원 현황 -->
+      <div class="row g-3 mb-3">
+        ${kpiTile('👥', '전체 재원생', activeCount, '명', '#2563eb')}
+        ${kpiTile('✨', '이번달 신입', newThisMonth, '명', '#10b981')}
+        ${kpiTile('👋', '이번달 퇴원', withdrawnThisMonth, '명', '#ef4444')}
+        ${kpiTile('⏸️', '휴원중', pausedCount, '명', '#f59e0b')}
+      </div>
+
+      <!-- 오늘의 핵심 지표 -->
+      <div class="text-muted small fw-bold mb-2 mt-3">오늘의 핵심 지표</div>
       <div class="row g-3 mb-4">
-        <div class="col-md-3 col-6">
-          <div class="card border-0 shadow-sm h-100" style="border-radius: 12px; border-bottom: 4px solid #2563eb !important;">
-            <div class="card-body p-3 text-center">
-              <div class="text-muted small fw-bold mb-1">전체 재원생</div>
-              <div class="fs-3 fw-bold text-primary">${activeCount}<span class="fs-6 text-muted"> 명</span></div>
-            </div>
-          </div>
-        </div>
-        <div class="col-md-3 col-6">
-          <div class="card border-0 shadow-sm h-100" style="border-radius: 12px; border-bottom: 4px solid #10b981 !important;">
-            <div class="card-body p-3 text-center">
-              <div class="text-muted small fw-bold mb-1">이번달 신입</div>
-              <div class="fs-3 fw-bold text-success">${newThisMonth}<span class="fs-6 text-muted"> 명</span></div>
-            </div>
-          </div>
-        </div>
-        <div class="col-md-3 col-6">
-          <div class="card border-0 shadow-sm h-100" style="border-radius: 12px; border-bottom: 4px solid #ef4444 !important;">
-            <div class="card-body p-3 text-center">
-              <div class="text-muted small fw-bold mb-1">이번달 퇴원</div>
-              <div class="fs-3 fw-bold text-danger">${withdrawnThisMonth}<span class="fs-6 text-muted"> 명</span></div>
-            </div>
-          </div>
-        </div>
-        <div class="col-md-3 col-6">
-          <div class="card border-0 shadow-sm h-100" style="border-radius: 12px; border-bottom: 4px solid #f59e0b !important;">
-            <div class="card-body p-3 text-center">
-              <div class="text-muted small fw-bold mb-1">휴원중</div>
-              <div class="fs-3 fw-bold" style="color:#d97706;">${pausedCount}<span class="fs-6 text-muted"> 명</span></div>
-            </div>
-          </div>
-        </div>
+        ${kpiTile('📅', '오늘 수업', todayClasses, '건', '#0ea5e9')}
+        ${kpiTile('📈', '이번달 출석률', attendanceRate, '%', '#16a34a')}
+        ${kpiTile('⏳', '미완료 보강', incompleteMakeups, '건', '#dc2626')}
       </div>
 
-      <div class="card border-0 shadow-sm mb-3">
-        <div class="card-header bg-white border-bottom-0 pt-3 pb-0">
-          <h6 class="fw-bold m-0 text-secondary"><i class="bi bi-graph-up me-2"></i>월별 신입·퇴원 추이 (최근 6개월)</h6>
+      <!-- 월별 추이 -->
+      <div class="card border-0 shadow-sm mb-4" style="border-radius:14px;">
+        <div class="card-header bg-white border-bottom pt-3 pb-2" style="border-radius:14px 14px 0 0;">
+          <h6 class="fw-bold m-0 text-dark">월별 신입·퇴원 추이 <span class="text-muted fw-normal small">(최근 6개월)</span></h6>
         </div>
         <div class="card-body">
-          <canvas id="monthlyTrendChart" height="90"></canvas>
+          <canvas id="monthlyTrendChart" height="85"></canvas>
         </div>
       </div>
 
-      <div class="alert alert-secondary border-0 small mb-0" style="background:#f1f5f9;">
+      <!-- 주의 필요한 학생 -->
+      <div class="card border-0 shadow-sm mb-4" style="border-radius:14px;">
+        <div class="card-header bg-white border-bottom pt-3 pb-2 d-flex justify-content-between align-items-center" style="border-radius:14px 14px 0 0;">
+          <h6 class="fw-bold m-0 text-dark">🚨 주의 필요한 학생 <span class="text-muted fw-normal small">(${atRiskStudents.length}명)</span></h6>
+          <button class="btn btn-sm btn-light border rounded-circle" style="width:28px;height:28px;padding:0;" data-bs-toggle="modal" data-bs-target="#atRiskCriteriaModal"><i class="bi bi-info-circle small"></i></button>
+        </div>
+        <div class="card-body p-0">${atRiskRows}</div>
+      </div>
+
+      ${window.renderHomeworkRangeAlertWidget ? window.renderHomeworkRangeAlertWidget() : ''}
+
+      <!-- 강사별 현황 -->
+      <div class="row g-3 mb-3">
+        <div class="col-lg-6">
+          <div class="card border-0 shadow-sm h-100" style="border-radius:14px;">
+            <div class="card-header bg-white border-bottom pt-3 pb-2" style="border-radius:14px 14px 0 0;">
+              <h6 class="fw-bold m-0 text-dark">강사별 수업 현황</h6>
+            </div>
+            <div class="card-body p-0">
+              <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                  <thead><tr class="text-muted small"><th class="ps-4">강사명</th><th class="text-center">수업수</th><th class="text-center pe-4">담당학생</th></tr></thead>
+                  <tbody>${teacherClassRows}</tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="col-lg-6">
+          <div class="card border-0 shadow-sm h-100" style="border-radius:14px;">
+            <div class="card-header bg-white border-bottom pt-3 pb-2" style="border-radius:14px 14px 0 0;">
+              <h6 class="fw-bold m-0 text-dark">선생님별 담당 학생 현황</h6>
+            </div>
+            <div class="card-body p-0">
+              <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                  <thead><tr class="text-muted small"><th class="ps-4">선생님</th><th class="text-center">담당학생 수</th><th class="text-center pe-4">상태</th></tr></thead>
+                  <tbody>${teacherStudentRows}</tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="alert alert-light border small mb-0" style="background:#f8fafc;">
         <i class="bi bi-info-circle me-1"></i>
         퇴원 사유 분석 · 재등록률은 아직 데이터가 쌓이지 않아 표시하지 않습니다. (원천DB에 퇴원사유 입력 및 등록일/퇴원일 분리가 필요합니다)
       </div>
@@ -976,14 +1071,14 @@ window.renderManagementDashboardView = function (targetId) {
         data: {
           labels: monthLabels,
           datasets: [
-            { label: '신입', data: monthNew, backgroundColor: '#10b981' },
-            { label: '퇴원', data: monthWithdrawn, backgroundColor: '#ef4444' }
+            { label: '신입', data: monthNew, backgroundColor: '#10b981', borderRadius: 4 },
+            { label: '퇴원', data: monthWithdrawn, backgroundColor: '#ef4444', borderRadius: 4 }
           ]
         },
         options: {
           responsive: true,
-          plugins: { legend: { position: 'top' } },
-          scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
+          plugins: { legend: { position: 'top', labels: { usePointStyle: true } } },
+          scales: { y: { beginAtZero: true, ticks: { stepSize: 1 }, grid: { color: '#f1f5f9' } }, x: { grid: { display: false } } }
         }
       });
     }
@@ -1036,44 +1131,52 @@ window.switchDashboardTab = function (tab) {
 // =================================================================
 // SMS 발송 현황 헬퍼 함수들
 // =================================================================
-window.getStudentSmsLogs = function (studentId, studentName) {
-  const smsLogs = (appCache.raw && appCache.raw.smsLogs) || [];
-  return smsLogs.filter(log => {
-    const logStudentId = log[0] || '';
-    const logStudentName = log[1] || '';
-    return logStudentId === studentId || logStudentName === studentName;
-  });
+// 실제 SMS 시트 컬럼: A=수신번호 B=수신자명 C=메시지내용 D=접수상태 E=최종상태 F=메모
+window.getTeacherFromSmsMessage_ = function (message) {
+  const m = String(message || '').match(/담임\s+(\S+)/);
+  return m ? m[1] : '미확인';
 };
 
-window.getTodaySmsStats = function () {
-  const today = new Date().toISOString().substring(0, 10);
+window.getStudentSmsLogs = function (studentId, studentName) {
   const smsLogs = (appCache.raw && appCache.raw.smsLogs) || [];
-  const todaysLogs = smsLogs.filter(log => {
-    const logDate = (log[2] || '').substring(0, 10); // A열: 발송일시
-    return logDate === today;
-  });
+  return smsLogs.filter(log => (log[1] || '') === studentName);
+};
 
-  const stats = { total: 0, success: 0, fail: 0, noPhone: 0, byTeacher: {} };
-  todaysLogs.forEach(log => {
-    const teacher = log[4] || '미확인'; // F열: 강사명
-    const status = log[3] || ''; // E열: 발송상태 (완료/실패/번호누락)
+// 날짜 컬럼이 시트에 없어서 "오늘"로 못 자르고, 시트에 남아있는 전체 현재 상태를 집계합니다.
+window.getSmsOverallStats = function () {
+  const smsLogs = (appCache.raw && appCache.raw.smsLogs) || [];
+  const stats = { total: 0, success: 0, fail: 0, noPhone: 0, pending: 0, byTeacher: {} };
 
+  smsLogs.forEach(log => {
+    const message = log[2] || '';
+    const reqStatus = (log[3] || '').trim();
+    const finalStatus = (log[4] || '').trim();
+    const memo = log[5] || '';
+
+    if (reqStatus === '대기중') { stats.pending++; return; } // 아직 발송 전(처리 대기중)은 집계 제외
+
+    const teacher = window.getTeacherFromSmsMessage_(message);
     stats.total++;
-    if (status === '완료') stats.success++;
-    else if (status === '번호누락') stats.noPhone++;
-    else stats.fail++;
-
     if (!stats.byTeacher[teacher]) stats.byTeacher[teacher] = { total: 0, success: 0, fail: 0 };
     stats.byTeacher[teacher].total++;
-    if (status === '완료') stats.byTeacher[teacher].success++;
-    else stats.byTeacher[teacher].fail++;
+
+    if (finalStatus === '발송완료') {
+      stats.success++;
+      stats.byTeacher[teacher].success++;
+    } else if (memo.includes('수신번호 없음')) {
+      stats.noPhone++;
+      stats.byTeacher[teacher].fail++;
+    } else {
+      stats.fail++;
+      stats.byTeacher[teacher].fail++;
+    }
   });
 
-  return { today, stats, todaysLogs };
+  return stats;
 };
 
 window.renderSmsSummary = function () {
-  const { today, stats } = window.getTodaySmsStats();
+  const stats = window.getSmsOverallStats();
 
   if (stats.total === 0) return '';
 
@@ -1093,7 +1196,7 @@ window.renderSmsSummary = function () {
     <div class="mt-4">
       <div class="card border-0 shadow-sm">
         <div class="card-header bg-white border-bottom-0 pt-3 pb-0">
-          <h6 class="fw-bold m-0 text-secondary"><i class="bi bi-telephone-fill me-2"></i>📱 SMS 발송 현황 (${today})</h6>
+          <h6 class="fw-bold m-0 text-secondary"><i class="bi bi-telephone-fill me-2"></i>📱 SMS 발송 현황 (현재 시트 누적${stats.pending > 0 ? ` · 대기중 ${stats.pending}건` : ''})</h6>
         </div>
         <div class="card-body">
           <div class="row g-2 mb-3">
@@ -1145,6 +1248,268 @@ window.renderSmsSummary = function () {
       </div>
     </div>
   `;
+};
+
+// =================================================================
+// 🔔 학생 관리 공백 알람 (상담/출결기록이 N일 이상 없는 재원생)
+// =================================================================
+window.getNeglectedStudentsAlert = function (thresholdDays) {
+  thresholdDays = thresholdDays || 30;
+  const students = ((appCache.raw && appCache.raw.students) || []).filter(s => s[0] && (s[7] || '').trim() === '재원');
+  const counsels = (appCache.raw && appCache.raw.counsels) || [];
+  const attendance = (appCache.raw && appCache.raw.attendance) || [];
+
+  const todayStr = new Date().toISOString().substring(0, 10);
+  const cutoffStr = new Date(Date.now() - thresholdDays * 24 * 60 * 60 * 1000).toISOString().substring(0, 10);
+
+  const lastCounselByName = new Map();
+  counsels.forEach(r => {
+    if (!r[0]) return;
+    const name = (r[1] || '').trim();
+    const date = (r[4] || r[0] || '').substring(0, 10);
+    if (!name || !date) return;
+    if (!lastCounselByName.has(name) || date > lastCounselByName.get(name)) lastCounselByName.set(name, date);
+  });
+
+  const lastAttByKey = new Map();
+  attendance.forEach(r => {
+    const id = r[1]; const name = (r[2] || '').trim(); const date = (r[3] || '').substring(0, 10);
+    if (!date) return;
+    [id, name].filter(Boolean).forEach(key => {
+      if (!lastAttByKey.has(key) || date > lastAttByKey.get(key)) lastAttByKey.set(key, date);
+    });
+  });
+
+  const counselNeglected = []; const attNeglected = [];
+  students.forEach(s => {
+    const id = s[0]; const name = (s[1] || '').trim();
+
+    const lastCounsel = lastCounselByName.get(name);
+    if (!lastCounsel || lastCounsel < cutoffStr) counselNeglected.push({ id, name, lastDate: lastCounsel || null });
+
+    const lastAtt = lastAttByKey.get(id) || lastAttByKey.get(name);
+    if (!lastAtt || lastAtt < cutoffStr) attNeglected.push({ id, name, lastDate: lastAtt || null });
+  });
+
+  return { counselNeglected, attNeglected, thresholdDays, todayStr };
+};
+
+window.renderNeglectedStudentsWidget = function () {
+  const { counselNeglected, attNeglected, thresholdDays } = window.getNeglectedStudentsAlert(30);
+  if (counselNeglected.length === 0 && attNeglected.length === 0) return '';
+
+  const daysSince = (lastDate) => {
+    if (!lastDate) return '기록없음';
+    const days = Math.floor((Date.now() - new Date(lastDate).getTime()) / (24 * 60 * 60 * 1000));
+    return `${days}일 전`;
+  };
+
+  const badge = (s, color) => `<span class="badge bg-${color} bg-opacity-10 text-${color} border border-${color} border-opacity-25 fw-normal me-1 mb-1" style="cursor:pointer;" onclick="openStudentProfileModal('${s.id}', '${s.name}')">${s.name} <span class="opacity-75">(${daysSince(s.lastDate)})</span></span>`;
+
+  return `
+    <div class="mt-4">
+      <div class="card border-0 shadow-sm" style="border-radius:14px;">
+        <div class="card-header bg-white border-bottom pt-3 pb-2" style="border-radius:14px 14px 0 0;">
+          <h6 class="fw-bold m-0 text-dark">🔔 학생 관리 공백 알람 <span class="text-muted fw-normal small">(재원생 기준, ${thresholdDays}일 이상)</span></h6>
+        </div>
+        <div class="card-body">
+          <div class="mb-3">
+            <div class="small fw-bold text-muted mb-2">상담 공백 (${counselNeglected.length}명)</div>
+            <div>${counselNeglected.length > 0 ? counselNeglected.map(s => badge(s, 'warning')).join('') : '<span class="text-muted small">없음</span>'}</div>
+          </div>
+          <div>
+            <div class="small fw-bold text-muted mb-2">출결기록 공백 (${attNeglected.length}명)</div>
+            <div>${attNeglected.length > 0 ? attNeglected.map(s => badge(s, 'danger')).join('') : '<span class="text-muted small">없음</span>'}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+};
+
+// =================================================================
+// 📖 숙제 범위 기준표 불일치 알람 (출결기록 메모의 [숙제범위확인필요:] 태그 스캔)
+// =================================================================
+window.getHomeworkRangeAlerts = function (daysBack) {
+  daysBack = daysBack || 7;
+  const attendance = (appCache.raw && appCache.raw.attendance) || [];
+  const cutoffStr = new Date(Date.now() - daysBack * 24 * 60 * 60 * 1000).toISOString().substring(0, 10);
+
+  const alerts = [];
+  attendance.forEach(r => {
+    const memo = r[17] || '';
+    const date = (r[3] || '').substring(0, 10);
+    if (!memo.includes('[숙제범위확인필요:')) return;
+    if (date < cutoffStr) return;
+    const m = memo.match(/\[숙제범위확인필요: ([^\]]+)\]/);
+    alerts.push({ id: r[1], name: r[2], date, teacher: r[4], detail: m ? m[1] : '' });
+  });
+  return alerts.sort((a, b) => b.date.localeCompare(a.date));
+};
+
+window.renderHomeworkRangeAlertWidget = function () {
+  const alerts = window.getHomeworkRangeAlerts(7);
+  if (alerts.length === 0) return '';
+
+  const rows = alerts.map(a => `
+    <div class="d-flex justify-content-between align-items-center px-4 py-3" style="border-bottom:1px solid #f1f5f9; cursor:pointer;" onclick="openStudentProfileModal('${a.id}', '${a.name}')">
+      <div>
+        <span class="fw-bold text-dark">${a.name}</span>
+        <span class="text-muted small ms-2">${a.date} · ${a.teacher}</span>
+      </div>
+      <span class="badge bg-warning bg-opacity-10 text-warning border border-warning border-opacity-25 fw-normal">${a.detail}</span>
+    </div>`).join('');
+
+  return `
+    <div class="card border-0 shadow-sm mb-4" style="border-radius:14px;">
+      <div class="card-header bg-white border-bottom pt-3 pb-2" style="border-radius:14px 14px 0 0;">
+        <h6 class="fw-bold m-0 text-dark">📖 숙제 범위 확인 필요 <span class="text-muted fw-normal small">(최근 7일, ${alerts.length}건)</span></h6>
+      </div>
+      <div class="card-body p-0">${rows}</div>
+    </div>
+  `;
+};
+
+// =================================================================
+// 📝 월말평가 연동 (별도 워크북 → 월말평가DB → 대시보드 위젯)
+// =================================================================
+// 월말평가DB 컬럼: 타임스탬프(0) 연월(1) 학생ID(2) 학생명(3) 학년(4) 학기(5) 담당강사(6)
+//                  선행범위(7) 현행점수(8) 선행점수(9) 현행링크(10) 선행링크(11)
+//                  풀이노트제출여부(12) 풀이노트점수(13) 클리닉대상(14) 풀이노트평가(15) 특이사항(16)
+// 같은 연월 + 같은 학년(예: 초4) 학생들의 특정 컬럼(fieldIdx) 평균 (본인 포함, 소수점 반올림)
+window.getMonthlyEvalGradeAverage = function (yearMonth, gradeLabel, fieldIdx) {
+  if (!yearMonth || !gradeLabel) return null;
+  const rows = (appCache.raw && appCache.raw.monthlyEvalDb) || [];
+  const scores = rows
+    .filter(r => r[1] === yearMonth && r[4] === gradeLabel)
+    .map(r => parseFloat(r[fieldIdx]))
+    .filter(v => !isNaN(v));
+  if (scores.length === 0) return null;
+  return Math.round(scores.reduce((a, b) => a + b, 0) / scores.length);
+};
+
+window.getMonthlyEvalDashboardStats = function () {
+  const rows = (appCache.raw && appCache.raw.monthlyEvalDb) || [];
+  if (rows.length === 0) return null;
+
+  const yearMonths = [...new Set(rows.map(r => r[1]).filter(Boolean))].sort();
+  const latestMonth = yearMonths[yearMonths.length - 1];
+  const latestRows = rows.filter(r => r[1] === latestMonth);
+
+  const notSubmitted = latestRows.filter(r => (r[12] || '').trim() === '미제출');
+  const clinicTargets = latestRows.filter(r => (r[14] || '').trim() !== '');
+
+  return { yearMonth: latestMonth, notSubmitted, clinicTargets, total: latestRows.length };
+};
+
+window.renderMonthlyEvalWidget = function () {
+  const stats = window.getMonthlyEvalDashboardStats();
+  if (!stats || stats.total === 0) return '';
+
+  const allStudents = (appCache.raw && appCache.raw.students) || [];
+  const badge = (name, extra, color) => {
+    const matched = allStudents.find(s => (s[1] || '').trim() === name);
+    const sid = matched ? matched[0] : '';
+    return `<span class="badge bg-${color} bg-opacity-10 text-${color} border border-${color} border-opacity-25 fw-normal me-1 mb-1" style="cursor:pointer;" onclick="openStudentProfileModal('${sid}', '${name}')">${name}${extra ? ` (${extra})` : ''}</span>`;
+  };
+
+  const notSubmitBadges = stats.notSubmitted.map(r => badge(r[3], '', 'secondary')).join('') || '<span class="text-muted small">없음</span>';
+  const clinicBadges = stats.clinicTargets.map(r => badge(r[3], r[14], 'danger')).join('') || '<span class="text-muted small">없음</span>';
+
+  return `
+    <div class="mt-4">
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white border-bottom-0 pt-3 pb-0">
+          <h6 class="fw-bold m-0 text-secondary"><i class="bi bi-journal-text me-2"></i>📝 풀이노트 현황 (${stats.yearMonth})</h6>
+        </div>
+        <div class="card-body">
+          <div class="mb-3">
+            <div class="small fw-bold text-muted mb-2">미제출 (${stats.notSubmitted.length}명)</div>
+            <div>${notSubmitBadges}</div>
+          </div>
+          <div>
+            <div class="small fw-bold text-muted mb-2">클리닉 대상 (${stats.clinicTargets.length}명)</div>
+            <div>${clinicBadges}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+};
+
+// 월말평가 원본 시트(별도 워크북) → 월말평가DB로 가져오기
+window.syncMonthlyEvalToDB = async function () {
+  showLoader(true, '월말평가 시트 목록 확인 중...');
+  try {
+    const sheetList = await getMonthlyEvalSheetList();
+    if (sheetList.length === 0) {
+      showLoader(false);
+      alert('월말평가 워크북에서 YYYY.MM 형식의 탭을 찾을 수 없습니다.');
+      return;
+    }
+
+    const latestSheet = sheetList[sheetList.length - 1];
+    showLoader(false);
+    const targetSheet = prompt(`가져올 월말평가 탭 이름을 입력하세요.\n(발견된 탭: ${sheetList.join(', ')})`, latestSheet);
+    if (!targetSheet) return;
+
+    if (!confirm(`"${targetSheet}" 탭의 데이터를 월말평가DB로 가져옵니다.\n※ 이미 가져온 적이 있다면 중복 저장되니 한 번만 실행해주세요.\n계속할까요?`)) return;
+
+    showLoader(true, `${targetSheet} 시트 데이터 읽는 중...`);
+    const rawRows = await getMonthlyEvalRawData(targetSheet);
+    await ensureMonthlyEvalDbSheet();
+
+    const timestamp = new Date().toLocaleString('ko-KR');
+    const students = appCache.raw.students || [];
+    const dbRows = [];
+
+    rawRows.forEach(row => {
+      const name = (row[0] || '').trim();
+      if (!name) return; // 빈 행 스킵
+
+      const grade = row[1] || ''; // 현학년(예: 초4) - 학년평균 그룹핑 기준이라 학교급 포함된 값 사용
+      const semester = row[3] || '';
+      const advRange = row[4] || '';
+      const teacher = row[6] || '';
+      const memo = row[12] || '';
+      const currentScore = row[13] || '';
+      const advScore = row[14] || '';
+      const currentLink = row[16] || '';
+      const advLink = row[17] || '';
+      const noteSubmitRaw = row[18];
+      const noteScore = row[19] || '';
+      const clinicTarget = row[20] || '';
+      const noteEval = row[21] || '';
+
+      const matched = students.find(s => (s[1] || '').trim() === name);
+      const studentId = matched ? matched[0] : '';
+
+      dbRows.push([
+        timestamp, targetSheet, studentId, name, grade, semester, teacher, advRange,
+        currentScore, advScore, currentLink, advLink,
+        (noteSubmitRaw === undefined || noteSubmitRaw === '') ? '미제출' : noteSubmitRaw,
+        noteScore, clinicTarget, noteEval, memo
+      ]);
+    });
+
+    if (dbRows.length === 0) {
+      showLoader(false);
+      alert('가져올 학생 데이터가 없습니다.');
+      return;
+    }
+
+    await appendMonthlyEvalRows(dbRows);
+    await loadMonthlyEvalDbData();
+
+    showLoader(false);
+    alert(`✅ ${dbRows.length}명의 월말평가 데이터를 저장했습니다.`);
+
+    if (window.loadDashboardView) window.loadDashboardView();
+  } catch (e) {
+    showLoader(false);
+    alert('월말평가 데이터 가져오기 실패: ' + e.message);
+    console.error(e);
+  }
 };
 
 // =================================================================
@@ -2377,13 +2742,17 @@ window.openStudentProfileModal = function (studentId, studentName) {
     const mySmsLogs = window.getStudentSmsLogs(studentId, studentName);
     if (mySmsLogs && mySmsLogs.length > 0) {
       smsHistoryHTML = mySmsLogs.slice(-5).reverse().map(log => {
-        const date = log[2] ? log[2].substring(0, 10) : '-';
-        const status = log[3] || '미정';
-        const statusColor = status === '완료' ? 'success' : (status === '실패' || status === '번호누락' ? 'danger' : 'warning');
+        const message = log[2] || '';
+        const reqStatus = (log[3] || '').trim();
+        const finalStatus = (log[4] || '').trim();
+        const memo = log[5] || '';
+        const isNoPhone = memo.includes('수신번호 없음');
+        const displayStatus = isNoPhone ? '번호누락' : (finalStatus || reqStatus || '대기중');
+        const statusColor = finalStatus === '발송완료' ? 'success' : (isNoPhone || finalStatus === '발송실패' || finalStatus === '친구아님' ? 'danger' : 'warning');
         return `
           <div class="border-start border-3 border-${statusColor} ps-2 mb-2">
-            <div class="small fw-bold text-${statusColor}">${date} · ${status}</div>
-            <div class="small text-muted text-truncate" style="max-width: 200px;" title="${log[1] || ''}">${log[1] || '-'}</div>
+            <div class="small fw-bold text-${statusColor}">${displayStatus}</div>
+            <div class="small text-muted text-truncate" style="max-width: 250px;" title="${message}">${message}</div>
           </div>`;
       }).join('');
     }
@@ -2485,6 +2854,36 @@ window.openStudentProfileModal = function (studentId, studentName) {
           chartData.push(Math.round((score / totalScore) * 100));
         }
       });
+    }
+
+    // 6-1. 월말평가 성적 추이 추출 (+ 같은 학년 평균 비교)
+    let evalChartLabels = []; let evalChartCurrent = []; let evalChartAdvanced = []; let evalChartGradeAvg = [];
+    let monthlyEvalHTML = '<div class="text-muted small">월말평가 기록이 없습니다.</div>';
+    if (appCache.raw.monthlyEvalDb) {
+      const myEvals = appCache.raw.monthlyEvalDb
+        .filter(r => (r[3] || '').trim() === studentName)
+        .sort((a, b) => (a[1] || '').localeCompare(b[1] || ''));
+
+      myEvals.forEach(r => {
+        evalChartLabels.push(r[1] || '-');
+        const cur = parseFloat(r[8]); const adv = parseFloat(r[9]);
+        evalChartCurrent.push(isNaN(cur) ? null : cur);
+        evalChartAdvanced.push(isNaN(adv) ? null : adv);
+        evalChartGradeAvg.push(window.getMonthlyEvalGradeAverage(r[1], r[4], 8));
+      });
+
+      if (myEvals.length > 0) {
+        monthlyEvalHTML = myEvals.slice(-6).reverse().map(r => {
+          const yearMonth = r[1] || '-'; const cur = r[8] || '-'; const adv = r[9] || '-';
+          const noteScore = r[13] || '-'; const clinic = (r[14] || '').trim();
+          const gradeAvg = window.getMonthlyEvalGradeAverage(r[1], r[4], 8);
+          return `
+            <div class="border-start border-3 border-success ps-2 mb-2">
+              <div class="small fw-bold text-dark">${yearMonth} <span class="text-muted fw-normal">· 현행 ${cur}${gradeAvg !== null ? ` (${r[4] || ''}평균 ${gradeAvg})` : ''} / 선행 ${adv} · 풀이노트 ${noteScore}</span></div>
+              ${clinic ? `<span class="badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25 fw-normal">클리닉대상: ${clinic}</span>` : ''}
+            </div>`;
+        }).join('');
+      }
     }
 
     // 7. 상담 요청 현황
@@ -2592,6 +2991,18 @@ window.openStudentProfileModal = function (studentId, studentName) {
           </div>
 
           <div class="card border-0 shadow-sm mb-3">
+            <div class="card-header bg-white border-bottom-0 pt-3 pb-0">
+              <h6 class="fw-bold m-0 text-success"><i class="bi bi-journal-check me-2"></i>월말평가 성적 추이 (현행·선행)</h6>
+            </div>
+            <div class="card-body pt-2">
+              ${evalChartLabels.length > 0
+        ? `<div style="position: relative; height: 160px; width: 100%;"><canvas id="studentMonthlyEvalChart"></canvas></div>`
+        : `<div class="text-muted small text-center py-4 bg-light rounded">월말평가 기록이 없습니다.</div>`}
+              <div class="mt-3">${monthlyEvalHTML}</div>
+            </div>
+          </div>
+
+          <div class="card border-0 shadow-sm mb-3">
             <div class="card-header bg-white border-bottom-0 pt-3 pb-0"><h6 class="fw-bold m-0 text-warning"><i class="bi bi-bar-chart-line-fill me-2"></i>최근 숙제 달성률</h6></div>
             <div class="card-body pt-2 pb-3">${hwStatsHTML}</div>
           </div>
@@ -2690,6 +3101,26 @@ window.openStudentProfileModal = function (studentId, studentName) {
               }]
             },
             options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, max: 100 } }, plugins: { legend: { display: false } } }
+          });
+        }
+      }, 300);
+    }
+
+    if (evalChartLabels.length > 0) {
+      setTimeout(() => {
+        const ctx = document.getElementById('studentMonthlyEvalChart');
+        if (ctx) {
+          new Chart(ctx, {
+            type: 'line',
+            data: {
+              labels: evalChartLabels,
+              datasets: [
+                { label: '현행', data: evalChartCurrent, borderColor: '#2563eb', backgroundColor: 'rgba(37, 99, 235, 0.08)', borderWidth: 2, pointRadius: 3, spanGaps: true, tension: 0.3 },
+                { label: '선행', data: evalChartAdvanced, borderColor: '#f59e0b', backgroundColor: 'rgba(245, 158, 11, 0.08)', borderWidth: 2, pointRadius: 3, spanGaps: true, tension: 0.3 },
+                { label: '현행 학년평균', data: evalChartGradeAvg, borderColor: '#94a3b8', borderDash: [5, 4], borderWidth: 2, pointRadius: 0, spanGaps: true, tension: 0.3 }
+              ]
+            },
+            options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, max: 100 } }, plugins: { legend: { position: 'top' } } }
           });
         }
       }, 300);
@@ -2952,48 +3383,112 @@ window.submitRegistration = async function () {
 // =========================================
 // 🚀 상담 기록 뷰 (실시간 검색창 탑재)
 // =========================================
-window.loadCounselView = function () {
-  if (!appCache.raw || !appCache.raw.counsels) {
-    document.getElementById('view-container').innerHTML = '<p>데이터를 불러올 수 없습니다.</p>'; return;
-  }
-  const counsels = appCache.raw.counsels;
-  let cList = [];
+window.getCounselList_ = function () {
+  const counsels = (appCache.raw && appCache.raw.counsels) || [];
   const myName = appCache.user.name;
   const isManager = (appCache.user.role === '원장');
-
+  let cList = [];
   for (let i = counsels.length - 1; i >= 1; i--) {
     const r = counsels[i]; if (!r[0]) continue;
     const counselTeacher = (r[6] || '').split('(')[0].trim();
     if (!isManager && counselTeacher !== myName) continue;
     cList.push({ date: r[4] ? r[4].substring(0, 10) : (r[0] ? r[0].substring(0, 10) : '-'), student: r[1], schoolInfo: r[3], type: r[5], teacher: r[6], target: r[7], memo: r[8] });
   }
+  return cList;
+};
+
+window.loadCounselView = function () {
+  if (!appCache.raw || !appCache.raw.counsels) {
+    document.getElementById('view-container').innerHTML = '<p>데이터를 불러올 수 없습니다.</p>'; return;
+  }
+
+  const typeOptions = ['정기 상담', '신규상담', '학부모 전화 상담 요청', '대면상담', '퇴원상담', '기타']
+    .map(t => `<option value="${t}">${t}</option>`).join('');
 
   let html = `
-    <div class="d-flex justify-content-between align-items-center mb-4">
+    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
       <h3 class="fw-bold m-0"><i class="bi bi-chat-dots text-info me-2"></i>상담 기록</h3>
       <div class="d-flex gap-2">
-        <input type="text" id="counselSearchInput" class="form-control form-control-sm border-info rounded-pill px-3 shadow-sm" placeholder="🔍 학생명 검색..." style="width: 140px;" onkeyup="filterTableRows('counselSearchInput', 'counselTable', 1)">
         <button class="btn btn-outline-info btn-sm fw-bold rounded-pill border-2" onclick="refreshCounselData()"><i class="bi bi-arrow-clockwise"></i></button>
         <button class="btn btn-info btn-sm fw-bold rounded-pill text-white text-nowrap" onclick="openCounselModal()"><i class="bi bi-pencil-square"></i> 새 등록</button>
       </div>
     </div>
-    
+
+    <div class="card border-0 shadow-sm p-3 mb-3" style="border-radius: 12px;">
+      <div class="row g-2 align-items-end">
+        <div class="col-md-3">
+          <label class="form-label small text-muted fw-bold mb-1">학생명 검색</label>
+          <input type="text" id="counselSearchInput" class="form-control form-control-sm" placeholder="🔍 학생명..." oninput="window.renderCounselTable()">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label small text-muted fw-bold mb-1">상담 유형</label>
+          <select id="counselTypeFilter" class="form-select form-select-sm" onchange="window.renderCounselTable()">
+            <option value="">전체</option>${typeOptions}
+          </select>
+        </div>
+        <div class="col-md-2">
+          <label class="form-label small text-muted fw-bold mb-1">시작일</label>
+          <input type="date" id="counselDateFrom" class="form-control form-control-sm" onchange="window.renderCounselTable()">
+        </div>
+        <div class="col-md-2">
+          <label class="form-label small text-muted fw-bold mb-1">종료일</label>
+          <input type="date" id="counselDateTo" class="form-control form-control-sm" onchange="window.renderCounselTable()">
+        </div>
+        <div class="col-md-2">
+          <button class="btn btn-outline-secondary btn-sm w-100" onclick="window.resetCounselFilters()"><i class="bi bi-x-circle"></i> 초기화</button>
+        </div>
+      </div>
+    </div>
+
     <div class="card border-0 shadow-sm p-4 border-top border-info border-4">
       <div class="table-responsive" style="max-height: 600px;">
         <table class="table table-hover align-middle table-sm" id="counselTable">
           <thead class="bg-light sticky-top"><tr><th style="width: 110px;">상담일자</th><th style="width: 100px;">학생명</th><th style="width: 120px;">학교명구분</th><th style="width: 150px;">상담유형</th><th style="width: 80px;">담당자</th><th>상담내용 (기타사항)</th></tr></thead>
-          <tbody>
-  `;
-  if (cList.length === 0) html += `<tr><td colspan="6" class="text-center py-5 text-muted">등록된 상담 기록이 없습니다.</td></tr>`;
-  else {
-    cList.forEach(c => {
-      let typeBadge = 'bg-secondary';
-      if (c.type === '신규상담') typeBadge = 'bg-primary'; else if (c.type === '정기 상담') typeBadge = 'bg-success'; else if (c.type === '학부모 전화 상담 요청') typeBadge = 'bg-info text-dark border border-info'; else if (c.type === '대면상담') typeBadge = 'bg-warning text-dark'; else if (c.type === '퇴원상담') typeBadge = 'bg-danger';
-      html += `<tr><td><span class="text-muted fw-bold small"><i class="bi bi-calendar"></i> ${c.date}</span></td><td class="fw-bold">${c.student} <span class="badge bg-light text-dark fw-normal border ms-1" style="font-size: 0.65rem;">${c.target || '모름'}</span></td><td class="text-muted small">${c.schoolInfo || '-'}</td><td><span class="badge ${typeBadge} rounded-pill px-2">${c.type || '-'}</span></td><td>${c.teacher || '-'}</td><td style="white-space: pre-wrap; font-size: 0.85rem;" class="text-dark">${c.memo || ''}</td></tr>`;
-    });
-  }
-  html += `</tbody></table></div></div>`;
+          <tbody id="counselTableBody"></tbody>
+        </table>
+      </div>
+    </div>`;
   document.getElementById('view-container').innerHTML = html;
+  window.renderCounselTable();
+};
+
+window.resetCounselFilters = function () {
+  const searchEl = document.getElementById('counselSearchInput');
+  const typeEl = document.getElementById('counselTypeFilter');
+  const fromEl = document.getElementById('counselDateFrom');
+  const toEl = document.getElementById('counselDateTo');
+  if (searchEl) searchEl.value = '';
+  if (typeEl) typeEl.value = '';
+  if (fromEl) fromEl.value = '';
+  if (toEl) toEl.value = '';
+  window.renderCounselTable();
+};
+
+window.renderCounselTable = function () {
+  const tbody = document.getElementById('counselTableBody');
+  if (!tbody) return;
+
+  const search = (document.getElementById('counselSearchInput')?.value || '').trim();
+  const typeFilter = document.getElementById('counselTypeFilter')?.value || '';
+  const dateFrom = document.getElementById('counselDateFrom')?.value || '';
+  const dateTo = document.getElementById('counselDateTo')?.value || '';
+
+  let cList = window.getCounselList_();
+  if (search) cList = cList.filter(c => (c.student || '').includes(search));
+  if (typeFilter) cList = cList.filter(c => c.type === typeFilter);
+  if (dateFrom) cList = cList.filter(c => c.date >= dateFrom);
+  if (dateTo) cList = cList.filter(c => c.date <= dateTo);
+
+  if (cList.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="6" class="text-center py-5 text-muted">조건에 맞는 상담 기록이 없습니다.</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = cList.map(c => {
+    let typeBadge = 'bg-secondary';
+    if (c.type === '신규상담') typeBadge = 'bg-primary'; else if (c.type === '정기 상담') typeBadge = 'bg-success'; else if (c.type === '학부모 전화 상담 요청') typeBadge = 'bg-info text-dark border border-info'; else if (c.type === '대면상담') typeBadge = 'bg-warning text-dark'; else if (c.type === '퇴원상담') typeBadge = 'bg-danger';
+    return `<tr><td><span class="text-muted fw-bold small"><i class="bi bi-calendar"></i> ${c.date}</span></td><td class="fw-bold">${c.student} <span class="badge bg-light text-dark fw-normal border ms-1" style="font-size: 0.65rem;">${c.target || '모름'}</span></td><td class="text-muted small">${c.schoolInfo || '-'}</td><td><span class="badge ${typeBadge} rounded-pill px-2">${c.type || '-'}</span></td><td>${c.teacher || '-'}</td><td style="white-space: pre-wrap; font-size: 0.85rem;" class="text-dark">${c.memo || ''}</td></tr>`;
+  }).join('');
 };
 
 // 상담유형에 따른 화면 토글
@@ -3184,6 +3679,7 @@ function loadTeacherAttView() {
   // 내 이번달 출퇴근 기록만 필터링 (원장님이더라도 본인 기록만 보는게 기본)
   // 타임스탬프 기준으로 정렬 (최신순)
   const currentMonth = new Date().toISOString().substring(0, 7); // 예: '2026-03'
+  const todayStr = new Date().toISOString().substring(0, 10);
 
   let myRecords = tattRecords.filter(r => {
     return r[1] === appCache.user.name && (r[2] || '').startsWith(currentMonth);
@@ -3191,6 +3687,24 @@ function loadTeacherAttView() {
 
   // 역순 정렬 (최신 기록이 위로)
   myRecords = myRecords.reverse();
+
+  // 오늘 상태 계산 (오늘 날짜의 출근/퇴근 기록 확인)
+  const todayRecords = myRecords.filter(r => r[2] === todayStr);
+  const checkInRec = todayRecords.find(r => r[4] === '출근');
+  const checkOutRec = todayRecords.find(r => r[4] === '퇴근');
+
+  let statusHTML = '';
+  let checkInDisabled = false; let checkOutDisabled = false;
+  if (checkInRec && checkOutRec) {
+    statusHTML = `<div class="alert alert-success border-0 shadow-sm fw-bold mb-4" style="border-radius: 12px;"><i class="bi bi-check-circle-fill me-2"></i>오늘 ${checkInRec[3]}~${checkOutRec[3]} 근무하셨습니다. 수고하셨어요! 🎉</div>`;
+    checkInDisabled = true; checkOutDisabled = true;
+  } else if (checkInRec) {
+    statusHTML = `<div class="alert alert-warning border-0 shadow-sm fw-bold mb-4" style="border-radius: 12px;"><i class="bi bi-hourglass-split me-2"></i>오늘 ${checkInRec[3]}에 출근하셨습니다. 아직 퇴근 전이에요.</div>`;
+    checkInDisabled = true;
+  } else {
+    statusHTML = `<div class="alert alert-secondary border-0 shadow-sm fw-bold mb-4" style="border-radius: 12px;"><i class="bi bi-sun me-2"></i>오늘 아직 출근 기록이 없습니다.</div>`;
+    checkOutDisabled = true;
+  }
 
   let html = `
     <div class="d-flex justify-content-between align-items-center mb-4">
@@ -3202,16 +3716,18 @@ function loadTeacherAttView() {
         </button>
       </div>
     </div>
-    
+
+    ${statusHTML}
+
     <div class="row g-3 mb-4">
       <div class="col-6">
-        <button class="btn btn-primary w-100 py-4 shadow-sm rounded-4 fw-bold fs-5" id="btn-checkin" onclick="recordTeacherAtt('출근')">
+        <button class="btn btn-primary w-100 py-4 shadow-sm rounded-4 fw-bold fs-5" id="btn-checkin" onclick="recordTeacherAtt('출근')" ${checkInDisabled ? 'disabled' : ''}>
           <i class="bi bi-box-arrow-in-right mb-2 d-block fs-1"></i>
           출근하기
         </button>
       </div>
       <div class="col-6">
-        <button class="btn btn-danger w-100 py-4 shadow-sm rounded-4 fw-bold fs-5" id="btn-checkout" onclick="recordTeacherAtt('퇴근')">
+        <button class="btn btn-danger w-100 py-4 shadow-sm rounded-4 fw-bold fs-5" id="btn-checkout" onclick="recordTeacherAtt('퇴근')" ${checkOutDisabled ? 'disabled' : ''}>
           <i class="bi bi-box-arrow-right mb-2 d-block fs-1"></i>
           퇴근하기
         </button>
@@ -3763,6 +4279,7 @@ window.saveAttendance = async function (submitType, isOnlyAtt, targetIdx = null)
 
   let records = [];
   let hasMissingAtt = false;
+  let hwRangeWarnings = []; // 풀이노트 숙제 범위 기준표 불일치 목록 (경영대시보드 알람용)
 
   rows.forEach((row, idx) => {
     if (targetIdx !== null && targetIdx !== idx) return;
@@ -3787,20 +4304,41 @@ window.saveAttendance = async function (submitType, isOnlyAtt, targetIdx = null)
     let recordStatus = isFinal ? '최종' : '임시저장';
     if (att === '결석') recordStatus = '최종';
 
-    const memoInput = document.getElementById(`memo_${idx}`)?.value || "";
+    let memoInput = document.getElementById(`memo_${idx}`)?.value || "";
     const newBookInput = document.getElementById(`newBook_${idx}`)?.value || "";
     const bookFeeInput = document.getElementById(`bookFee_${idx}`)?.value || "";
 
     const alimtalkSummary = `[출결] ${att} / [과제] ${hw}`;
     const newBookText = newBookInput ? (newBookInput.includes('지급)') ? newBookInput : `${newBookInput} (${date} 지급)`) : "";
 
+    const hwB1 = document.getElementById('hwB1_' + idx)?.value || '';
+    const hwR1 = document.getElementById('hwR1_' + idx)?.value || '';
+    const hwB2 = document.getElementById('hwB2_' + idx)?.value || '';
+    const hwR2 = document.getElementById('hwR2_' + idx)?.value || '';
+    const hwB3 = document.getElementById('hwB3_' + idx)?.value || '';
+    const hwR3 = document.getElementById('hwR3_' + idx)?.value || '';
+
+    // 💡 풀이노트 숙제 범위 기준표 체크
+    const myRowWarnings = [];
+    [[hwB1, hwR1], [hwB2, hwR2], [hwB3, hwR3]].forEach(([book, range]) => {
+      if (!book || !range) return;
+      const check = window.checkHomeworkRangeAgainstReference(book, range);
+      if (check && check.valid === false) {
+        myRowWarnings.push({ student: rawName, book, range });
+      }
+    });
+    if (myRowWarnings.length > 0) {
+      hwRangeWarnings.push(...myRowWarnings);
+      memoInput = `[숙제범위확인필요: ${myRowWarnings.map(w => `${w.book} '${w.range}'`).join(', ')}] ${memoInput}`.trim();
+    }
+
     let rowData = [
       new Date().toLocaleString('ko-KR'), rawId, rawName, date, currentEventForModal.teacherId,
       att, hw,
       `${document.getElementById('pB1_' + idx)?.value || ''}|${document.getElementById('pB2_' + idx)?.value || ''}|${document.getElementById('pB3_' + idx)?.value || ''}`,
       `${document.getElementById('pR1_' + idx)?.value || progress}|${document.getElementById('pR2_' + idx)?.value || ''}|${document.getElementById('pR3_' + idx)?.value || ''}`,
-      `${document.getElementById('hwB1_' + idx)?.value || ''}|${document.getElementById('hwB2_' + idx)?.value || ''}|${document.getElementById('hwB3_' + idx)?.value || ''}`,
-      `${document.getElementById('hwR1_' + idx)?.value || ''}|${document.getElementById('hwR2_' + idx)?.value || ''}|${document.getElementById('hwR3_' + idx)?.value || ''}`,
+      `${hwB1}|${hwB2}|${hwB3}`,
+      `${hwR1}|${hwR2}|${hwR3}`,
       document.getElementById(`t1Type_${idx}`).value, document.getElementById(`t1Cor_${idx}`).value, document.getElementById(`t1Tot_${idx}`).value,
       document.getElementById(`t2Type_${idx}`).value, document.getElementById(`t2Cor_${idx}`).value, document.getElementById(`t2Tot_${idx}`).value,
       memoInput, recordStatus, alimtalkSummary, newBookText, bookFeeInput,
@@ -3814,6 +4352,13 @@ window.saveAttendance = async function (submitType, isOnlyAtt, targetIdx = null)
   });
 
   if (hasMissingAtt) return alert(targetIdx !== null ? "해당 학생의 [출결] 상태를 선택해주세요!" : "모든 학생의 [출결] 상태를 선택해주세요!");
+
+  if (hwRangeWarnings.length > 0) {
+    const msg = '⚠️ 아래 "다음 과제" 범위가 기준표에 없는 페이지입니다:\n\n' +
+      hwRangeWarnings.map(w => `- ${w.student}: [${w.book}] ${w.range}`).join('\n') +
+      '\n\n그래도 저장하시겠습니까? (저장하면 원장님 대시보드에 표시됩니다)';
+    if (!confirm(msg)) return;
+  }
 
   showLoader(true);
   try {
@@ -4952,6 +5497,7 @@ window.applyUserRoleUI = function () {
     toggleMenu('menu-BOOK', 'block');
     toggleMenu('menu-TATT', 'block');
     toggleMenu('menu-ABSENT', 'block');
+    toggleMenu('btn-sidebar-new-student', 'block');
     if (typeof createTestLoginWidget === 'function') createTestLoginWidget();
   } else if (role === '데스크') {
     // 👩‍💻 데스크용 메뉴
@@ -4963,6 +5509,7 @@ window.applyUserRoleUI = function () {
     toggleMenu('menu-HISTORY', 'none');
     toggleMenu('menu-SCORE', 'none');
     toggleMenu('menu-TATT', 'none');
+    toggleMenu('btn-sidebar-new-student', 'block');
   } else {
     // 👨‍🏫 강사: 원장님 지시대로 본인 학생 관련 메뉴 전면 오픈
     toggleMenu('menu-STUDENT', 'block'); // 학생 관리
@@ -5405,7 +5952,7 @@ window.switchView = function (viewId) {
   const viewTitles = {
     DASHBOARD: '대시보드', SCHEDULE: '주간 시간표', ABSENTEE: '보강 관리', ABSENT: '보강 관리',
     STUDENT: '학생 관리', REGISTER: '수강 등록', COUNSEL: '상담 기록', COUNSEL_REQ: '상담 요청',
-    HISTORY: '기록 조회', SCORE: '성적 관리', BOOK: '교재 관리', TATT: '강사 근태'
+    HISTORY: '기록 조회', SCORE: '성적 관리', BOOK: '교재 관리', TATT: '강사 근태', SMS: 'SMS 발송 이력'
   };
   const titleEl = document.getElementById('mobile-page-title');
   if (titleEl) titleEl.textContent = viewTitles[viewId] || '수학의 힘';
@@ -5435,6 +5982,7 @@ window.switchView = function (viewId) {
       case 'BOOK': if (window.loadBookView) window.loadBookView(); break;
       case 'TATT': if (window.loadTeacherAttView) window.loadTeacherAttView(); break;
       case 'ABSENT': if (window.loadAbsenteeView) window.loadAbsenteeView(); break;
+      case 'SMS': if (window.loadSmsView) window.loadSmsView(); break;
     }
     window.scrollTo(0, 0);
   } catch (e) {
@@ -5472,6 +6020,57 @@ window.logoutApp = function () {
   location.reload();
 };
 
+// =========================================
+// 🔍 전역 학생 검색 (사이드바)
+// =========================================
+window.handleGlobalStudentSearch = function (keyword) {
+  const resultsEl = document.getElementById('globalStudentSearchResults');
+  if (!resultsEl) return;
+
+  const q = (keyword || '').trim();
+  if (!q) { resultsEl.style.display = 'none'; resultsEl.innerHTML = ''; return; }
+
+  const students = (appCache.raw && appCache.raw.students) || [];
+  const matches = students
+    .filter(s => (s[1] || '').includes(q))
+    .slice(0, 8);
+
+  if (matches.length === 0) {
+    resultsEl.innerHTML = '<div class="list-group-item small text-muted">검색 결과가 없습니다.</div>';
+    resultsEl.style.display = 'block';
+    return;
+  }
+
+  resultsEl.innerHTML = matches.map(s => {
+    const statusColor = s[7] === '재원' ? 'success' : (s[7] === '휴원' ? 'warning' : 'secondary');
+    return `<button type="button" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center" onclick="window.selectGlobalStudentResult('${s[0]}', '${(s[1] || '').replace(/'/g, "\\'")}')">
+      <span class="fw-bold">${s[1] || '-'}</span>
+      <span class="d-flex align-items-center gap-2">
+        <span class="text-muted small">${s[3] || ''} ${s[4] || ''}</span>
+        <span class="badge bg-${statusColor} bg-opacity-10 text-${statusColor} border border-${statusColor} border-opacity-25 fw-normal">${s[7] || '-'}</span>
+      </span>
+    </button>`;
+  }).join('');
+  resultsEl.style.display = 'block';
+};
+
+window.selectGlobalStudentResult = function (studentId, studentName) {
+  const resultsEl = document.getElementById('globalStudentSearchResults');
+  const inputEl = document.getElementById('globalStudentSearch');
+  if (resultsEl) { resultsEl.style.display = 'none'; resultsEl.innerHTML = ''; }
+  if (inputEl) inputEl.value = '';
+  openStudentProfileModal(studentId, studentName);
+};
+
+document.addEventListener('click', function (e) {
+  const resultsEl = document.getElementById('globalStudentSearchResults');
+  const inputEl = document.getElementById('globalStudentSearch');
+  if (!resultsEl || !inputEl) return;
+  if (e.target !== inputEl && !resultsEl.contains(e.target)) {
+    resultsEl.style.display = 'none';
+  }
+});
+
 window.toggleSidebar = function () {
   const sidebar = document.getElementById('sidebar');
   if (sidebar) sidebar.classList.toggle('open');
@@ -5486,7 +6085,89 @@ window.toggleSidebar = function () {
   overlay.classList.toggle('open');
 };
 // =========================================
-// 🚀 [긴급 복구] 성적 관리 뷰 및 팝업창 
+// 📱 SMS 발송 이력 화면
+// =========================================
+window.loadSmsView = function () {
+  const logs = (appCache.raw && appCache.raw.smsLogs) || [];
+
+  let tableRows = '';
+  if (logs.length === 0) {
+    tableRows = '<tr><td colspan="4" class="text-center py-5 text-muted">발송 기록이 없습니다.</td></tr>';
+  } else {
+    const sorted = [...logs].reverse();
+    sorted.forEach(log => {
+      const phone = log[0] || '-';
+      const name = log[1] || '-';
+      const message = log[2] || '';
+      const reqStatus = (log[3] || '').trim();
+      const finalStatus = (log[4] || '').trim();
+      const memo = log[5] || '';
+      const isNoPhone = memo.includes('수신번호 없음');
+      const displayStatus = isNoPhone ? '번호누락' : (finalStatus || reqStatus || '대기중');
+      const statusColor = finalStatus === '발송완료' ? 'success' : (isNoPhone || finalStatus === '발송실패' || finalStatus === '친구아님' ? 'danger' : 'warning');
+      const teacher = window.getTeacherFromSmsMessage_ ? window.getTeacherFromSmsMessage_(message) : '';
+
+      tableRows += `<tr style="font-size:0.83rem; cursor:pointer;" onclick="openStudentProfileModal('', '${name}')">
+        <td class="fw-bold">${name}</td>
+        <td class="text-muted small">${phone}</td>
+        <td><span class="badge bg-${statusColor} bg-opacity-10 text-${statusColor} border border-${statusColor} border-opacity-25">${displayStatus}</span></td>
+        <td class="text-muted small">${teacher}</td>
+        <td class="text-truncate small" style="max-width:280px;" title="${message}">${message}</td>
+      </tr>`;
+    });
+  }
+
+  document.getElementById('view-container').innerHTML = `
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <h4 class="fw-bold m-0"><i class="bi bi-telephone-fill me-2 text-primary"></i>SMS 발송 이력</h4>
+      <div class="d-flex gap-2">
+        <input type="text" id="smsSearchInput" class="form-control form-control-sm border-primary rounded-pill px-3 shadow-sm" placeholder="🔍 학생명 검색..." style="width: 150px;" onkeyup="filterTableRows('smsSearchInput', 'smsTable', 0)">
+        <button class="btn btn-outline-secondary btn-sm rounded-pill text-nowrap" onclick="forceRefresh()"><i class="bi bi-arrow-clockwise"></i></button>
+      </div>
+    </div>
+    <div class="card shadow-sm border-0">
+      <div class="table-responsive" style="max-height:70vh;">
+        <table class="table table-hover align-middle mb-0" id="smsTable">
+          <thead class="table-light sticky-top"><tr style="font-size:0.82rem;"><th>학생명</th><th>수신번호</th><th>상태</th><th>담당강사</th><th>메시지</th></tr></thead>
+          <tbody>${tableRows}</tbody>
+        </table>
+      </div>
+    </div>`;
+};
+
+// 월말평가 기록 - 선택한 연월(YYYY.MM)의 학생별 결과 테이블 렌더링
+window.renderMonthlyEvalTable = function (yearMonth) {
+  const tbody = document.getElementById('monthlyEvalTableBody');
+  if (!tbody) return;
+
+  const rows = ((appCache.raw && appCache.raw.monthlyEvalDb) || [])
+    .filter(r => r[1] === yearMonth)
+    .sort((a, b) => (a[3] || '').localeCompare(b[3] || '', 'ko'));
+
+  if (rows.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="8" class="text-center py-5 text-muted">해당 월 데이터가 없습니다.</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = rows.map(r => {
+    const [ , , , name, grade, , teacher, , current, advanced, , , noteSubmit, noteScore, clinic, , memo ] = r;
+    const isNotSubmitted = (noteSubmit || '').trim() === '미제출';
+    const gradeAvg = window.getMonthlyEvalGradeAverage(yearMonth, grade, 8);
+    return `<tr style="font-size:0.83rem; cursor:pointer;" onclick="openStudentProfileModal('${r[2] || ''}', '${name || ''}')">
+      <td class="fw-bold">${name || '-'}</td>
+      <td>${grade || '-'}</td>
+      <td class="text-muted">${teacher || '-'}</td>
+      <td class="text-center fw-bold">${current || '-'}${gradeAvg !== null ? `<div class="text-muted fw-normal" style="font-size:0.7rem;">평균 ${gradeAvg}</div>` : ''}</td>
+      <td class="text-center fw-bold">${advanced || '-'}</td>
+      <td class="text-center ${isNotSubmitted ? 'text-danger fw-bold' : ''}">${isNotSubmitted ? '미제출' : (noteScore || '-')}</td>
+      <td class="text-danger small">${clinic || ''}</td>
+      <td class="text-muted small">${memo || ''}</td>
+    </tr>`;
+  }).join('');
+};
+
+// =========================================
+// 🚀 [긴급 복구] 성적 관리 뷰 및 팝업창
 // =========================================
 window.loadScoreView = async function () {
   try {
@@ -5518,23 +6199,50 @@ window.loadScoreView = async function () {
       if (!tableRows) tableRows = `<tr><td colspan="8" class="text-center py-5 text-muted">해당 권한에 맞는 성적 데이터가 없습니다.</td></tr>`;
     }
 
+    const evalRows = (appCache.raw && appCache.raw.monthlyEvalDb) || [];
+    const evalMonths = [...new Set(evalRows.map(r => r[1]).filter(Boolean))].sort().reverse();
+    const evalMonthOptions = evalMonths.map(m => `<option value="${m}">${m}</option>`).join('');
+
     document.getElementById('view-container').innerHTML = `
       <div class="d-flex justify-content-between align-items-center mb-4">
         <h4 class="fw-bold m-0"><i class="bi bi-bar-chart-fill me-2 text-success"></i>성적 관리</h4>
         <div class="d-flex gap-2">
           <input type="text" id="scoreSearchInput" class="form-control form-control-sm border-success rounded-pill px-3 shadow-sm" placeholder="🔍 학생명 검색..." style="width: 150px;" onkeyup="filterTableRows('scoreSearchInput', 'scoreTable', 1)">
           <button class="btn btn-outline-secondary btn-sm rounded-pill text-nowrap" onclick="refreshScoreData()"><i class="bi bi-arrow-clockwise"></i></button>
+          ${isManager ? `<button class="btn btn-outline-info btn-sm rounded-pill fw-bold text-nowrap" onclick="syncMonthlyEvalToDB()"><i class="bi bi-cloud-download"></i> 월말평가 가져오기</button>` : ''}
           <button class="btn btn-success btn-sm rounded-pill fw-bold text-nowrap" onclick="openScoreModal()"><i class="bi bi-plus-lg"></i> 입력</button>
         </div>
       </div>
-      <div class="card shadow-sm border-0">
+      <div class="card shadow-sm border-0 mb-4">
         <div class="table-responsive" style="max-height:65vh;">
           <table class="table table-hover align-middle mb-0" id="scoreTable">
             <thead class="table-light sticky-top"><tr style="font-size:0.82rem;"><th>시험일</th><th>학생명</th><th>시험종류</th><th>과목</th><th class="text-center">점수</th><th class="text-center">만점</th><th class="text-center">성취율</th><th>${isManager ? '강사' : '비고'}</th></tr></thead>
             <tbody>${tableRows}</tbody>
           </table>
         </div>
+      </div>
+
+      <div class="card shadow-sm border-0">
+        <div class="card-header bg-white d-flex justify-content-between align-items-center">
+          <h6 class="fw-bold m-0"><i class="bi bi-journal-check me-2 text-success"></i>월말평가 기록</h6>
+          ${evalMonths.length > 0
+        ? `<select id="evalMonthSelect" class="form-select form-select-sm w-auto" onchange="window.renderMonthlyEvalTable(this.value)">${evalMonthOptions}</select>`
+        : ''}
+        </div>
+        <div class="table-responsive" style="max-height:55vh;">
+          <table class="table table-hover align-middle mb-0" id="monthlyEvalTable">
+            <thead class="table-light sticky-top"><tr style="font-size:0.82rem;"><th>학생명</th><th>학년</th><th>담당강사</th><th class="text-center">현행</th><th class="text-center">선행</th><th class="text-center">풀이노트</th><th>클리닉대상</th><th>특이사항</th></tr></thead>
+            <tbody id="monthlyEvalTableBody"></tbody>
+          </table>
+        </div>
       </div>`;
+
+    if (evalMonths.length > 0) {
+      window.renderMonthlyEvalTable(evalMonths[0]);
+    } else {
+      const tbody = document.getElementById('monthlyEvalTableBody');
+      if (tbody) tbody.innerHTML = '<tr><td colspan="8" class="text-center py-5 text-muted">가져온 월말평가 데이터가 없습니다.</td></tr>';
+    }
   } catch (e) {
     document.getElementById('view-container').innerHTML = `<div class="alert alert-danger m-4">성적 관리 로딩 오류: ${e.message}</div>`;
   }
