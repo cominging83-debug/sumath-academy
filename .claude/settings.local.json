@@ -67,7 +67,9 @@
       "Bash(grep -oE \"window\\\\.[a-zA-Z_]+ = |function [a-zA-Z_]+\\\\\\(|const [A-Z_]{4,} =\")",
       "Bash(git commit *)",
       "Bash(sort -u -t: -k2)",
-      "Bash(node test_settlement.js)"
+      "Bash(node test_settlement.js)",
+      "Bash(node sheets_app/tests/settlement.test.js)",
+      "Bash(node sheets_app/tests/student_memo.test.js)"
     ],
     "ask": [
       "Bash(vercel --prod*)",

@@ -3041,6 +3041,21 @@ window.openStudentProfileModal = function (studentId, studentName) {
       finalHTML += getIssueTrackerHTML(studentId);
     }
 
+    // 학생 메모 이력 (진행 + 완료 전부)
+    const memoKey = encodeURIComponent(JSON.stringify({ id: studentId || '', name: studentName || '' }));
+    finalHTML += `
+      <div class="card border-0 shadow-sm mt-3">
+        <div class="card-header bg-white d-flex justify-content-between align-items-center py-2">
+          <h6 class="fw-bold m-0 text-dark"><i class="bi bi-sticky-fill text-warning me-1"></i> 학생 메모 이력</h6>
+          <button type="button" class="btn btn-sm btn-outline-secondary" style="font-size:0.72rem;"
+            onclick="addStudentMemo('${memoKey}')"><i class="bi bi-plus-lg"></i> 추가</button>
+        </div>
+        <div class="card-body p-0" id="student-memo-history"
+             data-sid="${escapeHtml_(studentId || '')}" data-sname="${escapeHtml_(studentName || '')}">
+          ${window.renderStudentMemoHistory(studentId, studentName)}
+        </div>
+      </div>`;
+
     document.getElementById('studentProfileBody').innerHTML = finalHTML;
 
     // 상태 변경 버튼 추가 (원장만)
@@ -4060,6 +4075,7 @@ window.openAttendanceModal = function (eventId) {
 
     listHtml += `
         <div id="student-section-${idx}" class="p-4 mb-4 bg-white border rounded shadow-sm student-row" data-id="${s.id}" data-name="${s.name}" data-rawbadge="${rawBadge}">
+            <div data-memo-holder>${window.renderStudentMemoPanel(s.id, s.name)}</div>
             <div class="row align-items-center mb-3 pb-3 border-bottom">
                 <div class="col-md-3 fs-5 fw-bold text-dark d-flex flex-column align-items-start justify-content-center">
                     <div class="d-flex align-items-center mb-2">${displayNameHtml}</div>
@@ -5064,18 +5080,30 @@ window.openNoticeModal = function (encodedData) {
 };
 
 // 새 공지 등록 (E열 댓글 칸 비워두기)
+// ⚠️ 엔터키(onkeyup)로도 호출되기 때문에 버튼 disabled 만으로는 연타를 막지 못한다.
+//    실제로 공지DB에 같은 타임스탬프의 동일 공지가 4줄 쌓인 적이 있다.
+//    타임스탬프를 ID로 쓰는 구조라 중복이 생기면 댓글·완료·삭제가 첫 줄에만 먹는다.
+let isAddingNotice = false;
 window.addNotice = async function () {
+  if (isAddingNotice) return;
+
   let input = document.getElementById('newNoticeInput');
   let text = input.value.trim();
   if (!text) return;
+
+  isAddingNotice = true;
+  input.value = ''; // 연타로 같은 내용이 다시 올라가지 않게 즉시 비운다
   let btn = document.getElementById('btn-add-notice');
   btn.disabled = true; btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
   try {
     const rowData = [new Date().toLocaleString('ko-KR'), appCache.user.name, text, "진행", "[]"];
     await callSheetsAPI('POST', `/values/${encodeURIComponent(CONFIG.SHEETS.NOTICE)}:append?valueInputOption=USER_ENTERED`, { values: [rowData] });
     await refreshNoticeData();
-  } catch (e) { alert("공지 등록 실패: " + e.message); }
-  finally { btn.disabled = false; btn.innerHTML = '등록'; }
+  } catch (e) {
+    input.value = text; // 실패했으면 입력값을 돌려줘서 다시 시도할 수 있게 한다
+    alert("공지 등록 실패: " + e.message);
+  }
+  finally { isAddingNotice = false; btn.disabled = false; btn.innerHTML = '등록'; }
 };
 
 // 댓글 등록 (E열 JSON 파싱 및 저장)
@@ -6854,6 +6882,156 @@ window.markCounselComplete = async function(date, studentName) {
   } catch (e) {
     alert('처리 중 오류: ' + e.message);
   }
+};
+
+// =================================================================
+// 📌 학생별 상시 메모
+//
+//   "OO이는 4시 45분에 끝내주세요" 처럼 수업 중 계속 봐야 하는 운영 메모.
+//   - 진행중 메모는 일지 작성 화면의 해당 학생 카드 맨 위에 항상 표시
+//   - 완료를 누르면 일지 화면에서는 사라지고 학생 상세 프로필에 이력으로 남음
+//   - 일지 1건에만 붙는 기존 privateMemo(비밀메모)와 달리 학생에게 계속 따라붙는다
+// =================================================================
+
+// 타임스탬프만 ID로 쓰면 같은 초에 만든 항목끼리 충돌한다(공지DB에서 실제로 발생).
+window.makeUniqueId_ = function () {
+  return Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
+};
+
+function escapeHtml_(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+// 해당 학생의 메모 목록. status를 주면 그 상태만 (없으면 전체)
+window.getStudentMemos_ = function (studentId, studentName, status) {
+  const rows = (appCache.raw.studentMemos || []).filter(r => r && r[0]);
+  return rows.filter(r => {
+    const idMatch = studentId && r[1] === studentId;
+    const nameMatch = studentName && (r[2] || '').trim() === String(studentName).trim();
+    if (!idMatch && !nameMatch) return false;
+    return status ? (r[6] || '진행') === status : true;
+  });
+};
+
+// 일지 작성 화면 학생 카드 상단에 들어갈 메모 패널
+window.renderStudentMemoPanel = function (studentId, studentName) {
+  const active = window.getStudentMemos_(studentId, studentName, '진행');
+  const key = encodeURIComponent(JSON.stringify({ id: studentId || '', name: studentName || '' }));
+
+  const items = active.map(r => `
+      <div class="d-flex align-items-start gap-2 px-3 py-2 border-top">
+        <i class="bi bi-pin-angle-fill text-warning mt-1"></i>
+        <div class="flex-grow-1">
+          <div class="fw-bold text-dark" style="font-size:0.9rem; white-space:pre-wrap;">${escapeHtml_(r[3])}</div>
+          <small class="text-muted" style="font-size:0.7rem;">${escapeHtml_(r[4] || '')} · ${escapeHtml_((r[5] || '').substring(0, 16))}</small>
+        </div>
+        <button type="button" class="btn btn-sm btn-outline-success fw-bold flex-shrink-0"
+          style="font-size:0.7rem;" onclick="completeStudentMemo('${r[0]}')">완료</button>
+      </div>`).join('');
+
+  return `
+    <div class="mb-3 rounded border ${active.length ? 'border-warning bg-warning bg-opacity-10' : 'border-light bg-light'}"
+         id="memo-panel-${escapeHtml_(studentId || studentName)}">
+      <div class="d-flex justify-content-between align-items-center px-3 py-2">
+        <span class="fw-bold ${active.length ? 'text-warning-emphasis' : 'text-muted'}" style="font-size:0.8rem;">
+          <i class="bi bi-sticky-fill me-1"></i>학생 메모${active.length ? ` (${active.length})` : ''}
+        </span>
+        <button type="button" class="btn btn-sm btn-outline-secondary" style="font-size:0.7rem;"
+          onclick="addStudentMemo('${key}')"><i class="bi bi-plus-lg"></i> 추가</button>
+      </div>
+      ${items}
+    </div>`;
+};
+
+window.addStudentMemo = async function (encodedKey) {
+  const { id, name } = JSON.parse(decodeURIComponent(encodedKey));
+  const text = prompt(`[${name}] 학생 메모를 입력하세요.\n예) 4시 45분에 끝내주세요 / 다음주 결석 예정`);
+  if (text === null) return;
+  const trimmed = text.trim();
+  if (!trimmed) return;
+
+  showLoader(true, '메모 저장 중...');
+  try {
+    await ensureStudentMemoSheet();
+    const now = new Date().toLocaleString('ko-KR');
+    await appendStudentMemoRow([
+      window.makeUniqueId_(), id, name, trimmed, appCache.user.name, now, '진행', '', ''
+    ]);
+    await reloadStudentMemos();
+    showLoader(false);
+    window.refreshStudentMemoPanels_();
+  } catch (e) {
+    showLoader(false);
+    alert('메모 저장 실패: ' + e.message);
+  }
+};
+
+window.completeStudentMemo = async function (memoId) {
+  if (!confirm('이 메모를 완료 처리할까요?\n일지 화면에서는 사라지고 학생 상세에 이력으로 남습니다.')) return;
+  showLoader(true, '처리 중...');
+  try {
+    await updateStudentMemoStatus(memoId, '완료', new Date().toLocaleString('ko-KR'), appCache.user.name);
+    await reloadStudentMemos();
+    showLoader(false);
+    window.refreshStudentMemoPanels_();
+  } catch (e) {
+    showLoader(false);
+    alert('처리 실패: ' + e.message);
+  }
+};
+
+window.reopenStudentMemo = async function (memoId, studentId, studentName) {
+  if (!confirm('이 메모를 다시 진행중으로 되돌릴까요?')) return;
+  showLoader(true, '처리 중...');
+  try {
+    await updateStudentMemoStatus(memoId, '진행', '', '');
+    await reloadStudentMemos();
+    showLoader(false);
+    window.refreshStudentMemoPanels_();
+    if (document.getElementById('studentProfileModal')) openStudentProfileModal(studentId, studentName);
+  } catch (e) {
+    showLoader(false);
+    alert('처리 실패: ' + e.message);
+  }
+};
+
+// 열려 있는 일지 화면의 메모 패널들을 다시 그린다 (입력 중인 다른 값은 건드리지 않음)
+window.refreshStudentMemoPanels_ = function () {
+  document.querySelectorAll('.student-row').forEach(row => {
+    const holder = row.querySelector('[data-memo-holder]');
+    if (holder) holder.innerHTML = window.renderStudentMemoPanel(row.dataset.id, row.dataset.name);
+  });
+  const hist = document.getElementById('student-memo-history');
+  if (hist && hist.dataset.sid !== undefined) {
+    hist.innerHTML = window.renderStudentMemoHistory(hist.dataset.sid, hist.dataset.sname);
+  }
+};
+
+// 학생 상세 프로필용 전체 이력 (진행 + 완료)
+window.renderStudentMemoHistory = function (studentId, studentName) {
+  const all = window.getStudentMemos_(studentId, studentName)
+    .slice()
+    .sort((a, b) => String(b[5] || '').localeCompare(String(a[5] || '')));
+  if (!all.length) return `<div class="text-muted small text-center py-3">등록된 메모가 없습니다.</div>`;
+
+  return all.map(r => {
+    const done = (r[6] || '진행') === '완료';
+    return `
+      <div class="d-flex align-items-start gap-2 p-2 border-bottom ${done ? 'opacity-75' : ''}">
+        <span class="badge ${done ? 'bg-secondary' : 'bg-warning text-dark'} flex-shrink-0">${done ? '완료' : '진행'}</span>
+        <div class="flex-grow-1">
+          <div class="${done ? 'text-muted text-decoration-line-through' : 'fw-bold text-dark'}" style="font-size:0.85rem; white-space:pre-wrap;">${escapeHtml_(r[3])}</div>
+          <small class="text-muted" style="font-size:0.7rem;">
+            ${escapeHtml_(r[4] || '')} · ${escapeHtml_((r[5] || '').substring(0, 16))}
+            ${done && r[7] ? ` → ${escapeHtml_(r[8] || '')} 완료 ${escapeHtml_(String(r[7]).substring(0, 16))}` : ''}
+          </small>
+        </div>
+        ${done ? `<button type="button" class="btn btn-sm btn-outline-secondary flex-shrink-0" style="font-size:0.65rem;"
+          onclick="reopenStudentMemo('${r[0]}', '${escapeHtml_(studentId || '')}', '${escapeHtml_(studentName || '')}')">되돌리기</button>` : ''}
+      </div>`;
+  }).join('');
 };
 
 // =================================================================

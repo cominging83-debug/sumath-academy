@@ -184,7 +184,7 @@ async function loadInitialData() {
     if (!appCache.user) appCache.user = { email: '', name: '', role: '강사' };
     try {
         // 💡 [수정] 맨 끝에 issues 와 '이슈DB' 로드 명령을 추가했습니다!
-        const [teachers, students, schedules, attendance, counsels, books, tatt, classes, scores, templatesRaw, notices, makeups, issues, smsLogs, monthlyEvalDb, tuition, salary] = await Promise.all([
+        const [teachers, students, schedules, attendance, counsels, books, tatt, classes, scores, templatesRaw, notices, makeups, issues, smsLogs, monthlyEvalDb, tuition, salary, studentMemos] = await Promise.all([
             getOptionalSheetData(CONFIG.SHEETS.TEACHER, 'A2:L'),
             getOptionalSheetData(CONFIG.SHEETS.STUDENT, 'A2:P'),
             getOptionalSheetData(CONFIG.SHEETS.SCHEDULE, 'A2:N'),
@@ -201,11 +201,12 @@ async function loadInitialData() {
             getSmsLogData(), // SMS 발송 로그 (별도 Sheet)
             getOptionalSheetData(CONFIG.SHEETS.MONTHLY_EVAL_DB, 'A2:Q'), // 월말평가 결과 누적
             getOptionalSheetData(CONFIG.SHEETS.TUITION, 'A2:E'), // 수강료 단가표
-            getOptionalSheetData(CONFIG.SHEETS.SALARY, 'A2:C')   // 강사 월급여
+            getOptionalSheetData(CONFIG.SHEETS.SALARY, 'A2:C'),  // 강사 월급여
+            getOptionalSheetData(CONFIG.SHEETS.STUDENT_MEMO, 'A2:I') // 학생별 상시 메모
         ]);
 
         // 💡 [수정] 가져온 issues 데이터를 메모리(appCache)에 등록합니다.
-        appCache.raw = { teachers, students, schedules, attendance, counsels, books, tatt, classes, scores, notices, '보강일정DB': makeups, '이슈DB': issues, smsLogs, monthlyEvalDb, tuition, salary };
+        appCache.raw = { teachers, students, schedules, attendance, counsels, books, tatt, classes, scores, notices, '보강일정DB': makeups, '이슈DB': issues, smsLogs, monthlyEvalDb, tuition, salary, studentMemos };
 
         globalSourceStudents = students.map(s => s[1]).filter(name => name);
         appCache.templates = templatesRaw.map(r => ({ title: r[0], content: r[1] })).filter(t => t.title);
@@ -602,6 +603,45 @@ async function ensureSettlementSheets() {
     await addSheet(CONFIG.SHEETS.SALARY, SALARY_HEADERS, activeTeachers);
 
     return created;
+}
+
+// =================================================================
+// 📌 학생별 상시 메모
+//    "땡땡이는 4시 45분에 끝내주세요" 같은 운영 메모.
+//    진행 중인 메모만 일지 작성 화면에 뜨고, 완료하면 학생 상세 이력으로만 남는다.
+// =================================================================
+const STUDENT_MEMO_HEADERS = ['메모ID', '학생ID', '학생명', '내용', '작성자', '작성일시', '상태', '완료일시', '완료자'];
+
+async function ensureStudentMemoSheet() {
+    const meta = await callSheetsAPI('GET', '');
+    const exists = (meta.sheets || []).some(s => s.properties.title === CONFIG.SHEETS.STUDENT_MEMO);
+    if (exists) return false;
+    await callSheetsAPI('POST', ':batchUpdate', {
+        requests: [{ addSheet: { properties: { title: CONFIG.SHEETS.STUDENT_MEMO } } }]
+    });
+    const lastCol = String.fromCharCode('A'.charCodeAt(0) + STUDENT_MEMO_HEADERS.length - 1);
+    await callSheetsAPI('PUT', `/values/${encodeURIComponent(CONFIG.SHEETS.STUDENT_MEMO + '!A1:' + lastCol + '1')}?valueInputOption=USER_ENTERED`, { values: [STUDENT_MEMO_HEADERS] });
+    return true;
+}
+
+async function appendStudentMemoRow(row) {
+    await callSheetsAPI('POST', `/values/${encodeURIComponent(CONFIG.SHEETS.STUDENT_MEMO)}:append?valueInputOption=USER_ENTERED`, { values: [row] });
+}
+
+// 메모ID로 행을 찾아 상태/완료일시/완료자(G:I)를 갱신
+async function updateStudentMemoStatus(memoId, status, doneAt, doneBy) {
+    const res = await callSheetsAPI('GET', `/values/${encodeURIComponent(CONFIG.SHEETS.STUDENT_MEMO)}!A:I`);
+    const values = res.values || [];
+    const rowIndex = values.findIndex(r => r[0] === memoId);
+    if (rowIndex < 0) throw new Error('메모를 찾을 수 없습니다.');
+    const rowNum = rowIndex + 1;
+    await callSheetsAPI('PUT', `/values/${encodeURIComponent(CONFIG.SHEETS.STUDENT_MEMO + '!G' + rowNum + ':I' + rowNum)}?valueInputOption=USER_ENTERED`, {
+        values: [[status, doneAt, doneBy]]
+    });
+}
+
+async function reloadStudentMemos() {
+    appCache.raw.studentMemos = await getOptionalSheetData(CONFIG.SHEETS.STUDENT_MEMO, 'A2:I');
 }
 
 // 정산 설정 두 시트를 다시 읽어 캐시에 반영
