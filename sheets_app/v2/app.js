@@ -5497,6 +5497,7 @@ window.applyUserRoleUI = function () {
     toggleMenu('menu-BOOK', 'block');
     toggleMenu('menu-TATT', 'block');
     toggleMenu('menu-ABSENT', 'block');
+    toggleMenu('menu-TEACHER_KPI', 'block'); // 급여가 보이므로 원장/관리자 전용
     toggleMenu('btn-sidebar-new-student', 'block');
     if (typeof createTestLoginWidget === 'function') createTestLoginWidget();
   } else if (role === '데스크') {
@@ -5509,6 +5510,7 @@ window.applyUserRoleUI = function () {
     toggleMenu('menu-HISTORY', 'none');
     toggleMenu('menu-SCORE', 'none');
     toggleMenu('menu-TATT', 'none');
+    toggleMenu('menu-TEACHER_KPI', 'none');
     toggleMenu('btn-sidebar-new-student', 'block');
   } else {
     // 👨‍🏫 강사: 원장님 지시대로 본인 학생 관련 메뉴 전면 오픈
@@ -5520,6 +5522,7 @@ window.applyUserRoleUI = function () {
     toggleMenu('menu-TATT', 'block');    // 강사 근태
     toggleMenu('menu-REGISTER', 'none'); // 행정 차단
     toggleMenu('menu-BOOK', 'none');     // 행정 차단
+    toggleMenu('menu-TEACHER_KPI', 'none'); // 급여 정보 차단
   }
 };
 
@@ -5983,6 +5986,7 @@ window.switchView = function (viewId) {
       case 'TATT': if (window.loadTeacherAttView) window.loadTeacherAttView(); break;
       case 'ABSENT': if (window.loadAbsenteeView) window.loadAbsenteeView(); break;
       case 'SMS': if (window.loadSmsView) window.loadSmsView(); break;
+      case 'TEACHER_KPI': if (window.loadTeacherKpiView) window.loadTeacherKpiView(); break;
     }
     window.scrollTo(0, 0);
   } catch (e) {
@@ -6850,4 +6854,356 @@ window.markCounselComplete = async function(date, studentName) {
   } catch (e) {
     alert('처리 중 오류: ' + e.message);
   }
+};
+
+// =================================================================
+// 💰 강사 정산 · 성과 분석 (원장 전용)
+//
+// 매출 배분 규칙 (원장님 지침):
+//   - 학생의 월 수강료를 주간 정규 수업 슬롯에 '수업당매출'씩 배분
+//   - 각 슬롯의 담당 강사가 그 몫을 가져간다
+//   - '담임수당'은 그 학생을 가장 많이 담당하는 강사에게 (동점이면 원천DB 담임 컬럼)
+//   - 단가는 전부 '수강료단가표' 시트에서 읽는다 (코드에 금액 하드코딩 금지)
+// =================================================================
+
+// 학생 행 → 학교급('초'|'중'|'고'). 부서(C열) 우선, 없으면 학년(E열)으로 판단.
+window.getStudentGradeLevel_ = function (student) {
+  if (!student) return '초';
+  const dept = (student[2] || '').toString();
+  if (dept) return dept.includes('고') ? '고' : (dept.includes('중') ? '중' : '초');
+  const grade = (student[4] || '').toString();
+  if (grade) return grade.includes('고') ? '고' : (grade.includes('중') ? '중' : '초');
+  return '초';
+};
+
+// "250,000원" / "250000" 등을 숫자로
+function parseMoney_(v) {
+  const n = Number(String(v == null ? '' : v).replace(/[^0-9.-]/g, ''));
+  return isNaN(n) ? 0 : n;
+}
+
+function formatWon_(n) {
+  return Math.round(n || 0).toLocaleString('ko-KR');
+}
+
+// 수강료단가표 시트 → { 초: {monthly, perClass, homeroom}, 중: {...}, 고: {...} }
+window.getTuitionTable_ = function () {
+  const map = {};
+  (appCache.raw.tuition || []).forEach(r => {
+    const label = (r && r[0] || '').toString().trim();
+    if (!label) return;
+    const key = label.includes('고') ? '고' : (label.includes('중') ? '중' : '초');
+    map[key] = {
+      label,
+      monthly: parseMoney_(r[1]),
+      perClass: parseMoney_(r[2]),
+      homeroom: parseMoney_(r[3])
+    };
+  });
+  return map;
+};
+
+// 강사급여 시트 → Map(강사명 → 월급여). 시트에 없거나 금액이 비면 등록하지 않는다.
+window.getTeacherSalaryMap_ = function () {
+  const map = new Map();
+  (appCache.raw.salary || []).forEach(r => {
+    const name = (r && r[0] || '').toString().split('(')[0].trim();
+    if (!name) return;
+    const raw = (r[1] == null ? '' : String(r[1])).trim();
+    if (!raw) return; // 금액 미입력 → 급여 없음으로 처리 (0원과 구분)
+    map.set(name, parseMoney_(raw));
+  });
+  return map;
+};
+
+window.computeTeacherSettlement = function () {
+  const rates = window.getTuitionTable_();
+  const salaryMap = window.getTeacherSalaryMap_();
+
+  const activeById = new Map(window.getActiveStudents().map(s => [s[0], s]));
+
+  // 재원생의 활성 주간 슬롯만 집계
+  const byStudent = new Map();
+  window.getActiveSchedules()
+    .filter(r => (r[14] || '').trim() !== '비활성')
+    .forEach(r => {
+      const sid = r[3];
+      const teacher = (r[9] || '').split('(')[0].trim();
+      if (!sid || !teacher || !activeById.has(sid)) return;
+      if (!byStudent.has(sid)) byStudent.set(sid, []);
+      const mins = toMins(r[7]) - toMins(r[6]);
+      byStudent.get(sid).push({ teacher, minutes: mins > 0 ? mins : 0 });
+    });
+
+  const stats = new Map();
+  const touch = (name) => {
+    if (!stats.has(name)) {
+      stats.set(name, {
+        name, weeklyMinutes: 0, slotCount: 0, students: new Set(),
+        homeroomStudents: 0, classRevenue: 0, homeroomRevenue: 0
+      });
+    }
+    return stats.get(name);
+  };
+
+  const unresolvedHomeroom = [];
+  const missingRate = new Set();
+  const homeroomByStudent = new Map(); // 재원생 학생ID → 역산한 담임
+
+  byStudent.forEach((slots, sid) => {
+    const student = activeById.get(sid);
+    const level = window.getStudentGradeLevel_(student);
+    const rate = rates[level];
+    if (!rate) { missingRate.add(level); return; }
+
+    const countByTeacher = new Map();
+    slots.forEach(sl => {
+      const e = touch(sl.teacher);
+      e.weeklyMinutes += sl.minutes;
+      e.slotCount += 1;
+      e.students.add(sid);
+      e.classRevenue += rate.perClass;
+      countByTeacher.set(sl.teacher, (countByTeacher.get(sl.teacher) || 0) + 1);
+    });
+
+    // 담임 = 최다 담당 강사. 동점이면 원천DB 담임 컬럼(G열)을 따른다.
+    const maxCount = Math.max(...countByTeacher.values());
+    const top = [...countByTeacher.entries()].filter(([, c]) => c === maxCount).map(([t]) => t);
+    let homeroom = top[0];
+    if (top.length > 1) {
+      const declared = (student[6] || '').split('(')[0].trim();
+      homeroom = top.includes(declared) ? declared : null;
+      if (!homeroom) unresolvedHomeroom.push({ id: sid, name: student[1], candidates: top });
+    }
+    if (homeroom) {
+      homeroomByStudent.set(sid, homeroom);
+      const e = touch(homeroom);
+      e.homeroomStudents += 1;
+      e.homeroomRevenue += rate.homeroom;
+    }
+  });
+
+  // 담임별 재원/휴원/퇴원 집계.
+  // 재원생은 위에서 역산한 담임을 쓴다. 퇴원·휴원생은 수업일정이 비활성이라
+  // 역산이 불가능하므로 원천DB 담임 컬럼(G열)에만 의존한다.
+  const retention = new Map();
+  const bumpRetention = (name, status) => {
+    if (!name) return;
+    if (!retention.has(name)) retention.set(name, { 재원: 0, 휴원: 0, 퇴원: 0 });
+    const bucket = retention.get(name);
+    if (bucket[status] !== undefined) bucket[status] += 1;
+  };
+  (appCache.raw.students || []).slice(1).forEach(s => {
+    const declared = (s[6] || '').split('(')[0].trim();
+    const status = s[7];
+    bumpRetention(status === '재원' ? (homeroomByStudent.get(s[0]) || declared) : declared, status);
+  });
+
+  const rows = [...stats.values()].map(e => {
+    const revenue = e.classRevenue + e.homeroomRevenue;
+    const salary = salaryMap.has(e.name) ? salaryMap.get(e.name) : null;
+    const weeklyHours = e.weeklyMinutes / 60;
+    const r = retention.get(e.name) || { 재원: 0, 휴원: 0, 퇴원: 0 };
+    const managed = r.재원 + r.휴원 + r.퇴원;
+    return {
+      name: e.name,
+      weeklyHours,
+      slotCount: e.slotCount,
+      studentCount: e.students.size,
+      homeroomStudents: e.homeroomStudents,
+      classRevenue: e.classRevenue,
+      homeroomRevenue: e.homeroomRevenue,
+      revenue,
+      salary,
+      profit: salary === null ? null : revenue - salary,
+      laborRatio: (salary === null || revenue === 0) ? null : (salary / revenue) * 100,
+      revenuePerHour: weeklyHours > 0 ? revenue / weeklyHours : 0,
+      retention: r,
+      churnRate: managed > 0 ? (r.퇴원 / managed) * 100 : null
+    };
+  }).sort((a, b) => b.revenue - a.revenue);
+
+  return {
+    rows,
+    unresolvedHomeroom,
+    missingRate: [...missingRate],
+    missingSalary: rows.filter(r => r.salary === null).map(r => r.name),
+    totalRevenue: rows.reduce((s, r) => s + r.revenue, 0),
+    totalSalary: rows.reduce((s, r) => s + (r.salary || 0), 0),
+    rateConfigured: Object.keys(rates).length > 0,
+    rates
+  };
+};
+
+window.setupSettlementSheets = async function () {
+  if (!confirm('메인 스프레드시트에 "수강료단가표"·"강사급여" 시트를 만듭니다.\n이미 있으면 건드리지 않습니다. 진행할까요?')) return;
+  showLoader(true, '정산 설정 시트 생성 중...');
+  try {
+    const created = await ensureSettlementSheets();
+    await reloadSettlementData();
+    showLoader(false);
+    alert(created.length
+      ? `생성 완료: ${created.join(', ')}\n\n시트를 열어 금액을 채워주세요.`
+      : '두 시트가 이미 존재합니다.');
+    window.loadTeacherKpiView();
+  } catch (e) {
+    showLoader(false);
+    alert('시트 생성 실패: ' + e.message);
+  }
+};
+
+window.loadTeacherKpiView = function () {
+  const container = document.getElementById('view-container');
+  const role = appCache.user.role;
+  if (role !== '원장' && role !== '관리자') {
+    container.innerHTML = `<div class="alert alert-warning m-4">이 화면은 원장님만 볼 수 있습니다.</div>`;
+    return;
+  }
+
+  const d = window.computeTeacherSettlement();
+
+  if (!d.rateConfigured) {
+    container.innerHTML = `
+      <div class="p-4">
+        <h4 class="fw-bold mb-3">강사 정산 · 성과 분석</h4>
+        <div class="card border-0 shadow-sm p-4" style="border-radius:14px;">
+          <p class="mb-2 fw-bold">아직 "수강료단가표" 시트가 없습니다.</p>
+          <p class="text-muted small mb-3">
+            아래 버튼을 누르면 <b>수강료단가표</b>와 <b>강사급여</b> 시트를 만들고 초등/중등/고등 기본값을 채웁니다.
+            이후 금액 수정은 <b>시트에서 직접</b> 하시면 됩니다.
+          </p>
+          <div><button class="btn btn-primary fw-bold" onclick="setupSettlementSheets()">
+            <i class="bi bi-plus-circle me-1"></i> 정산 설정 시트 만들기
+          </button></div>
+        </div>
+      </div>`;
+    return;
+  }
+
+  const totalProfit = d.totalRevenue - d.totalSalary;
+  const totalRatio = d.totalRevenue > 0 ? (d.totalSalary / d.totalRevenue) * 100 : 0;
+
+  const tile = (label, value, unit, color) => `
+    <div class="col-md-3 col-6">
+      <div class="p-3 bg-white h-100" style="border-radius:14px; border:1px solid #eef0f3; border-left:3px solid ${color};">
+        <div class="text-muted small fw-semibold mb-2">${label}</div>
+        <div class="fw-bold" style="font-size:1.5rem; color:#1f2937; letter-spacing:-0.02em;">${value}<span class="fs-6 text-muted fw-normal"> ${unit}</span></div>
+      </div>
+    </div>`;
+
+  const rateRows = ['초', '중', '고'].filter(k => d.rates[k]).map(k => {
+    const r = d.rates[k];
+    return `<tr><td class="ps-4 fw-bold">${r.label}</td><td class="text-end">${formatWon_(r.monthly)}</td><td class="text-end">${formatWon_(r.perClass)}</td><td class="text-end pe-4">${formatWon_(r.homeroom)}</td></tr>`;
+  }).join('');
+
+  const bodyRows = d.rows.map(r => `
+    <tr>
+      <td class="ps-4 fw-bold text-dark">${r.name}</td>
+      <td class="text-center">${r.weeklyHours.toFixed(1)}</td>
+      <td class="text-center">${r.studentCount}</td>
+      <td class="text-center">${r.homeroomStudents}</td>
+      <td class="text-end">${formatWon_(r.revenue)}</td>
+      <td class="text-end ${r.salary === null ? 'text-muted' : ''}">${r.salary === null ? '미입력' : formatWon_(r.salary)}</td>
+      <td class="text-end fw-bold ${r.profit === null ? 'text-muted' : (r.profit >= 0 ? 'text-primary' : 'text-danger')}">${r.profit === null ? '-' : formatWon_(r.profit)}</td>
+      <td class="text-center ${r.laborRatio === null ? 'text-muted' : (r.laborRatio > 60 ? 'text-danger fw-bold' : '')}">${r.laborRatio === null ? '-' : r.laborRatio.toFixed(1) + '%'}</td>
+      <td class="text-end pe-4">${formatWon_(r.revenuePerHour)}</td>
+    </tr>`).join('') || `<tr><td colspan="9" class="text-center text-muted small py-4">집계할 수업 일정이 없습니다.</td></tr>`;
+
+  const retentionRows = d.rows.map(r => {
+    const t = r.retention;
+    const managed = t.재원 + t.휴원 + t.퇴원;
+    if (managed === 0) return '';
+    return `
+      <tr>
+        <td class="ps-4 fw-bold text-dark">${r.name}</td>
+        <td class="text-center">${managed}</td>
+        <td class="text-center text-success">${t.재원}</td>
+        <td class="text-center text-warning">${t.휴원}</td>
+        <td class="text-center text-danger">${t.퇴원}</td>
+        <td class="text-center pe-4 fw-bold ${r.churnRate > 20 ? 'text-danger' : ''}">${r.churnRate === null ? '-' : r.churnRate.toFixed(1) + '%'}</td>
+      </tr>`;
+  }).join('') || `<tr><td colspan="6" class="text-center text-muted small py-4">원천DB 담임(G열)이 비어 있어 집계할 수 없습니다.</td></tr>`;
+
+  const warnings = [];
+  if (d.missingSalary.length) warnings.push(`급여 미입력: <b>${d.missingSalary.join(', ')}</b> → 강사급여 시트에 금액을 채워주세요.`);
+  if (d.missingRate.length) warnings.push(`단가표에 없는 학교급: <b>${d.missingRate.join(', ')}</b> → 해당 학생 매출이 빠졌습니다.`);
+  if (d.unresolvedHomeroom.length) {
+    const names = d.unresolvedHomeroom.slice(0, 8).map(u => `${u.name}(${u.candidates.join('/')})`).join(', ');
+    warnings.push(`담임 동점 미결정 <b>${d.unresolvedHomeroom.length}명</b>: ${names}${d.unresolvedHomeroom.length > 8 ? ' 외' : ''} → 원천DB 담임(G열)을 지정하면 담임수당이 배분됩니다.`);
+  }
+
+  container.innerHTML = `
+    <div class="p-4">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h4 class="fw-bold m-0">강사 정산 · 성과 분석</h4>
+        <button class="btn btn-sm btn-outline-secondary" onclick="setupSettlementSheets()">
+          <i class="bi bi-gear me-1"></i> 설정 시트 확인
+        </button>
+      </div>
+
+      <div class="row g-3 mb-4">
+        ${tile('월 매출 (재원생 기준)', formatWon_(d.totalRevenue), '원', '#3b82f6')}
+        ${tile('월 인건비 (입력분)', formatWon_(d.totalSalary), '원', '#f59e0b')}
+        ${tile('차액', formatWon_(totalProfit), '원', totalProfit >= 0 ? '#10b981' : '#ef4444')}
+        ${tile('인건비율', totalRatio.toFixed(1), '%', '#8b5cf6')}
+      </div>
+
+      ${warnings.length ? `<div class="alert alert-warning small mb-4"><ul class="mb-0 ps-3">${warnings.map(w => `<li>${w}</li>`).join('')}</ul></div>` : ''}
+
+      <div class="card border-0 shadow-sm mb-4" style="border-radius:14px;">
+        <div class="card-header bg-white border-bottom pt-3 pb-2" style="border-radius:14px 14px 0 0;">
+          <h6 class="fw-bold m-0 text-dark">강사별 매출 · 손익</h6>
+        </div>
+        <div class="table-responsive">
+          <table class="table table-hover mb-0 align-middle">
+            <thead><tr class="text-muted small">
+              <th class="ps-4">강사</th><th class="text-center">주간시수</th><th class="text-center">담당학생</th>
+              <th class="text-center">담임학생</th><th class="text-end">월 매출기여</th><th class="text-end">월급여</th>
+              <th class="text-end">차액</th><th class="text-center">인건비율</th><th class="text-end pe-4">시수당 매출</th>
+            </tr></thead>
+            <tbody>${bodyRows}</tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="row g-3">
+        <div class="col-lg-7">
+          <div class="card border-0 shadow-sm h-100" style="border-radius:14px;">
+            <div class="card-header bg-white border-bottom pt-3 pb-2" style="border-radius:14px 14px 0 0;">
+              <h6 class="fw-bold m-0 text-dark">담임별 원생 유지 현황</h6>
+            </div>
+            <div class="table-responsive">
+              <table class="table table-hover mb-0">
+                <thead><tr class="text-muted small">
+                  <th class="ps-4">담임</th><th class="text-center">누적</th><th class="text-center">재원</th>
+                  <th class="text-center">휴원</th><th class="text-center">퇴원</th><th class="text-center pe-4">퇴원율</th>
+                </tr></thead>
+                <tbody>${retentionRows}</tbody>
+              </table>
+            </div>
+            <div class="card-footer bg-white border-0 pt-0">
+              <small class="text-muted">재원생은 수업일정에서 역산한 담임, <b>퇴원·휴원생은 원천DB 담임(G열)</b> 기준입니다. 퇴원생의 담임 컬럼이 비어 있으면 집계에서 빠집니다. 누적 기준이며 기간별 분석은 퇴원일 컬럼 분리 후 가능합니다.</small>
+            </div>
+          </div>
+        </div>
+        <div class="col-lg-5">
+          <div class="card border-0 shadow-sm h-100" style="border-radius:14px;">
+            <div class="card-header bg-white border-bottom pt-3 pb-2" style="border-radius:14px 14px 0 0;">
+              <h6 class="fw-bold m-0 text-dark">적용 중인 단가</h6>
+            </div>
+            <div class="table-responsive">
+              <table class="table table-sm mb-0">
+                <thead><tr class="text-muted small">
+                  <th class="ps-4">학교급</th><th class="text-end">월수강료</th><th class="text-end">수업당</th><th class="text-end pe-4">담임수당</th>
+                </tr></thead>
+                <tbody>${rateRows}</tbody>
+              </table>
+            </div>
+            <div class="card-footer bg-white border-0">
+              <small class="text-muted">금액 수정은 <b>수강료단가표</b> 시트에서 직접 하세요. 저장 후 새로고침하면 반영됩니다.</small>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>`;
 };

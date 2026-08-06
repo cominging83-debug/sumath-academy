@@ -184,7 +184,7 @@ async function loadInitialData() {
     if (!appCache.user) appCache.user = { email: '', name: '', role: '강사' };
     try {
         // 💡 [수정] 맨 끝에 issues 와 '이슈DB' 로드 명령을 추가했습니다!
-        const [teachers, students, schedules, attendance, counsels, books, tatt, classes, scores, templatesRaw, notices, makeups, issues, smsLogs, monthlyEvalDb] = await Promise.all([
+        const [teachers, students, schedules, attendance, counsels, books, tatt, classes, scores, templatesRaw, notices, makeups, issues, smsLogs, monthlyEvalDb, tuition, salary] = await Promise.all([
             getOptionalSheetData(CONFIG.SHEETS.TEACHER, 'A2:L'),
             getOptionalSheetData(CONFIG.SHEETS.STUDENT, 'A2:P'),
             getOptionalSheetData(CONFIG.SHEETS.SCHEDULE, 'A2:N'),
@@ -199,11 +199,13 @@ async function loadInitialData() {
             getOptionalSheetData('보강일정DB', 'A2:I'),
             getOptionalSheetData('이슈DB', 'A2:F'),
             getSmsLogData(), // SMS 발송 로그 (별도 Sheet)
-            getOptionalSheetData(CONFIG.SHEETS.MONTHLY_EVAL_DB, 'A2:Q') // 월말평가 결과 누적
+            getOptionalSheetData(CONFIG.SHEETS.MONTHLY_EVAL_DB, 'A2:Q'), // 월말평가 결과 누적
+            getOptionalSheetData(CONFIG.SHEETS.TUITION, 'A2:E'), // 수강료 단가표
+            getOptionalSheetData(CONFIG.SHEETS.SALARY, 'A2:C')   // 강사 월급여
         ]);
 
         // 💡 [수정] 가져온 issues 데이터를 메모리(appCache)에 등록합니다.
-        appCache.raw = { teachers, students, schedules, attendance, counsels, books, tatt, classes, scores, notices, '보강일정DB': makeups, '이슈DB': issues, smsLogs, monthlyEvalDb };
+        appCache.raw = { teachers, students, schedules, attendance, counsels, books, tatt, classes, scores, notices, '보강일정DB': makeups, '이슈DB': issues, smsLogs, monthlyEvalDb, tuition, salary };
 
         globalSourceStudents = students.map(s => s[1]).filter(name => name);
         appCache.templates = templatesRaw.map(r => ({ title: r[0], content: r[1] })).filter(t => t.title);
@@ -553,4 +555,61 @@ async function loadMonthlyEvalDbData() {
         console.warn('월말평가DB 로드 실패', e);
         appCache.raw.monthlyEvalDb = [];
     }
+}
+
+// =================================================================
+// 💰 정산 설정 시트 (수강료 단가표 / 강사 급여)
+//    두 시트 모두 원장님이 시트에서 직접 수정하는 것이 정상 운영 방식.
+//    코드에는 "시트가 없을 때 처음 만들어주는 초기값"만 둔다.
+// =================================================================
+const TUITION_HEADERS = ['학교급', '월수강료', '수업당매출', '담임수당', '비고'];
+
+// 초기값은 원장님이 제시한 규칙(주3회 기준)을 그대로 반영한 것.
+// 중등은 30만 ÷ 3 = 10만으로 딱 떨어져 담임수당이 0원이 된다 → 시트에서 조정 필요.
+const TUITION_SEED = [
+    ['초등', 250000, 80000, 10000, '주3회 기준 (8만×3 + 담임수당 1만 = 25만)'],
+    ['중등', 300000, 100000, 0, '⚠️ 30만÷3이 딱 떨어져 담임수당이 0원입니다. 조정해 주세요'],
+    ['고등', 400000, 130000, 10000, '주3회 기준 (13만×3 + 담임수당 1만 = 40만)']
+];
+
+const SALARY_HEADERS = ['강사명', '월급여', '비고'];
+
+// 시트가 없으면 생성하고 헤더 + 초기값을 기록한다. 이미 있으면 건드리지 않는다.
+async function ensureSettlementSheets() {
+    const meta = await callSheetsAPI('GET', '');
+    const existing = new Set((meta.sheets || []).map(s => s.properties.title));
+    const created = [];
+
+    const addSheet = async (title, headers, seedRows) => {
+        if (existing.has(title)) return;
+        await callSheetsAPI('POST', ':batchUpdate', {
+            requests: [{ addSheet: { properties: { title } } }]
+        });
+        const values = seedRows && seedRows.length ? [headers, ...seedRows] : [headers];
+        const lastCol = String.fromCharCode('A'.charCodeAt(0) + headers.length - 1);
+        const range = `${title}!A1:${lastCol}${values.length}`;
+        await callSheetsAPI('PUT', `/values/${encodeURIComponent(range)}?valueInputOption=USER_ENTERED`, { values });
+        created.push(title);
+    };
+
+    await addSheet(CONFIG.SHEETS.TUITION, TUITION_HEADERS, TUITION_SEED);
+
+    // 강사급여는 재직 중인 강사 명단을 미리 채워두면 원장님이 금액만 적으면 된다.
+    const activeTeachers = (appCache.raw.teachers || [])
+        .slice(1)
+        .filter(t => t && t[1] && t[4] !== '퇴사')
+        .map(t => [String(t[1]).split('(')[0].trim(), '', '']);
+    await addSheet(CONFIG.SHEETS.SALARY, SALARY_HEADERS, activeTeachers);
+
+    return created;
+}
+
+// 정산 설정 두 시트를 다시 읽어 캐시에 반영
+async function reloadSettlementData() {
+    const [tuition, salary] = await Promise.all([
+        getOptionalSheetData(CONFIG.SHEETS.TUITION, 'A2:E'),
+        getOptionalSheetData(CONFIG.SHEETS.SALARY, 'A2:C')
+    ]);
+    appCache.raw.tuition = tuition;
+    appCache.raw.salary = salary;
 }
